@@ -1,0 +1,36 @@
+# Unity generated folders
+/Library/
+/Temp/
+/Obj/
+/Build/
+/Builds/
+/Logs/
+/UserSettings/
+
+# Unity generated files
+*.csproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity crash reports
+/sysinfo.txt
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vs/
+.idea/
+.vscode/
+
+# Blender backup files
+*.blend1
+*.blend2
