@@ -319,7 +319,7 @@ namespace IfYouWereCockroach.Prototype
                 var visual = Instantiate(cockroachModel, playerObject.transform);
                 visual.name = "Cockroach Model";
                 visual.transform.localPosition = Vector3.zero;
-                visual.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                visual.transform.localRotation = Quaternion.identity;
                 visual.transform.localScale = Vector3.one * 0.75f;
                 visual.AddComponent<CockroachVisualAnimator>();
                 return;
@@ -563,7 +563,7 @@ namespace IfYouWereCockroach.Prototype
                     $"存活时间：{FormatTime(survivalTime)}\n" +
                     $"声音：{Percent(player != null ? player.NoiseLevel : 0f)}  警觉：{Percent(suspicion)}\n" +
                     $"位置状态：{hidden}  种子：{seed}\n" +
-                    "第一视角：WASD 移动 / Shift 疾跑 / E 产卵 / R 重开";
+                    "第一视角：W/S 前后爬 / A/D 转身 / Shift 疾跑 / E 产卵 / R 重开";
             }
 
             if (tasksText != null)
@@ -636,6 +636,7 @@ namespace IfYouWereCockroach.Prototype
         private AudioClip eggClip;
         private AudioClip detectedClip;
         private AudioClip deathClip;
+        private float currentForwardSpeed;
         private float verticalVelocity;
         private float hideTimer;
         private float detectedSoundCooldown;
@@ -683,21 +684,20 @@ namespace IfYouWereCockroach.Prototype
                 return;
             }
 
-            var input = new Vector3(Input.GetAxisRaw("Horizontal"), 0f, Input.GetAxisRaw("Vertical"));
-            input = Vector3.ClampMagnitude(input, 1f);
-            MoveIntensity = input.magnitude;
+            float turnInput = Input.GetAxisRaw("Horizontal");
+            float forwardInput = Input.GetAxisRaw("Vertical");
             IsSprinting = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-            float speed = IsSprinting ? 3.2f : 1.65f;
+            float forwardSpeed = IsSprinting ? 2.15f : 1.05f;
+            float backwardSpeed = 0.58f;
+            float targetForwardSpeed = forwardInput >= 0f ? forwardInput * forwardSpeed : forwardInput * backwardSpeed;
+            float acceleration = Mathf.Abs(targetForwardSpeed) > Mathf.Abs(currentForwardSpeed) ? 3.2f : 4.8f;
+            currentForwardSpeed = Mathf.MoveTowards(currentForwardSpeed, targetForwardSpeed, acceleration * Time.deltaTime);
 
-            var camera = Camera.main;
-            Vector3 forward = camera != null ? camera.transform.forward : Vector3.forward;
-            Vector3 right = camera != null ? camera.transform.right : Vector3.right;
-            forward.y = 0f;
-            right.y = 0f;
-            forward.Normalize();
-            right.Normalize();
+            float turnRate = Mathf.Lerp(58f, IsSprinting ? 92f : 74f, Mathf.Abs(currentForwardSpeed) / forwardSpeed);
+            transform.Rotate(0f, turnInput * turnRate * Time.deltaTime, 0f);
+            MoveIntensity = Mathf.Clamp01(Mathf.Abs(currentForwardSpeed) / forwardSpeed + Mathf.Abs(turnInput) * 0.16f);
 
-            Vector3 move = (forward * input.z + right * input.x) * speed;
+            Vector3 move = transform.forward * currentForwardSpeed;
             if (characterController.isGrounded && verticalVelocity < 0f)
             {
                 verticalVelocity = -0.2f;
@@ -707,16 +707,7 @@ namespace IfYouWereCockroach.Prototype
             move.y = verticalVelocity;
             characterController.Move(move * Time.deltaTime);
 
-            if (input.sqrMagnitude > 0.01f)
-            {
-                var look = new Vector3(move.x, 0f, move.z);
-                if (look.sqrMagnitude > 0.01f)
-                {
-                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(look), Time.deltaTime * 14f);
-                }
-            }
-
-            float targetNoise = input.magnitude * (IsSprinting ? 0.6f : 0.28f);
+            float targetNoise = MoveIntensity * (IsSprinting ? 0.54f : 0.2f);
             if (IsHidden)
             {
                 targetNoise *= 0.35f;
@@ -732,7 +723,7 @@ namespace IfYouWereCockroach.Prototype
             }
 
             NoiseLevel = Mathf.MoveTowards(NoiseLevel, targetNoise, Time.deltaTime * 1.3f);
-            UpdateCrawlAudio(input.magnitude, IsSprinting);
+            UpdateCrawlAudio(MoveIntensity, IsSprinting);
         }
 
         public void AddNoise(float amount)
@@ -1194,12 +1185,12 @@ namespace IfYouWereCockroach.Prototype
             float bobSpeed = player != null && player.IsSprinting ? 18f : 10f;
             bob += Time.deltaTime * bobSpeed * movement;
 
-            Vector3 eyeOffset = Vector3.up * (0.18f + Mathf.Sin(bob) * movement * 0.018f) + Target.forward * 0.18f;
+            Vector3 eyeOffset = Vector3.up * (0.145f + Mathf.Sin(bob) * movement * 0.012f) + Target.forward * 0.42f;
             var desired = Target.position + eyeOffset;
-            transform.position = Vector3.SmoothDamp(transform.position, desired, ref velocity, 0.045f);
+            transform.position = Vector3.SmoothDamp(transform.position, desired, ref velocity, 0.035f);
 
-            Vector3 lookDirection = (Target.forward + Vector3.down * 0.045f).normalized;
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDirection, Vector3.up), Time.deltaTime * 18f);
+            Vector3 lookDirection = (Target.forward + Vector3.down * 0.025f).normalized;
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDirection, Vector3.up), Time.deltaTime * 22f);
         }
     }
 }
