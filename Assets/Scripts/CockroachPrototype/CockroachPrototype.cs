@@ -258,20 +258,20 @@ namespace IfYouWereCockroach.Prototype
             CreateZone("Bedroom", new Vector3(2.8f, 0.014f, -4.3f), new Vector3(8.8f, 0.02f, 4.7f), new Color(0.66f, 0.57f, 0.53f, 0.45f));
             CreateZone("Bathroom", new Vector3(-5.8f, 0.016f, -4.4f), new Vector3(5.5f, 0.02f, 4.5f), new Color(0.55f, 0.66f, 0.72f, 0.45f));
 
-            AddFurniture("冰箱", new Vector3(-7.1f, 0.7f, 5.5f), new Vector3(1.1f, 1.4f, 0.9f), new Color(0.82f, 0.86f, 0.85f), true);
-            AddFurniture("灶台", new Vector3(-4.7f, 0.45f, 5.8f), new Vector3(2.2f, 0.9f, 0.8f), new Color(0.28f, 0.28f, 0.29f), true);
-            AddFurniture("餐桌", new Vector3(-2.6f, 0.45f, 2.4f), new Vector3(2.2f, 0.28f, 1.4f), new Color(0.43f, 0.28f, 0.18f), true);
-            AddFurniture("沙发", new Vector3(5.2f, 0.42f, 4.5f), new Vector3(3.2f, 0.84f, 1.2f), new Color(0.27f, 0.39f, 0.48f), true);
-            AddFurniture("茶几", new Vector3(4.7f, 0.28f, 2.2f), new Vector3(1.9f, 0.26f, 1.1f), new Color(0.36f, 0.25f, 0.17f), true);
-            AddFurniture("床", new Vector3(4.9f, 0.36f, -4.7f), new Vector3(3.2f, 0.7f, 2.2f), new Color(0.35f, 0.42f, 0.58f), true);
-            AddFurniture("洗手台", new Vector3(-7.1f, 0.4f, -5.6f), new Vector3(1.2f, 0.8f, 0.8f), new Color(0.88f, 0.9f, 0.88f), true);
+            AddFurniture("冰箱", new Vector3(-7.1f, 0.7f, 5.5f), new Vector3(1.1f, 1.4f, 0.9f), new Color(0.82f, 0.86f, 0.85f), true, "Models/Environment/Fridge_LowPoly");
+            AddFurniture("灶台", new Vector3(-4.7f, 0.45f, 5.8f), new Vector3(2.2f, 0.9f, 0.8f), new Color(0.28f, 0.28f, 0.29f), true, "Models/Environment/Stove_LowPoly");
+            AddFurniture("餐桌", new Vector3(-2.6f, 0.45f, 2.4f), new Vector3(2.2f, 0.28f, 1.4f), new Color(0.43f, 0.28f, 0.18f), true, "Models/Environment/DiningTable_LowPoly");
+            AddFurniture("沙发", new Vector3(5.2f, 0.42f, 4.5f), new Vector3(3.2f, 0.84f, 1.2f), new Color(0.27f, 0.39f, 0.48f), true, "Models/Environment/Sofa_LowPoly");
+            AddFurniture("茶几", new Vector3(4.7f, 0.28f, 2.2f), new Vector3(1.9f, 0.26f, 1.1f), new Color(0.36f, 0.25f, 0.17f), true, "Models/Environment/CoffeeTable_LowPoly");
+            AddFurniture("床", new Vector3(4.9f, 0.36f, -4.7f), new Vector3(3.2f, 0.7f, 2.2f), new Color(0.35f, 0.42f, 0.58f), true, "Models/Environment/Bed_LowPoly");
+            AddFurniture("洗手台", new Vector3(-7.1f, 0.4f, -5.6f), new Vector3(1.2f, 0.8f, 0.8f), new Color(0.88f, 0.9f, 0.88f), true, "Models/Environment/Sink_LowPoly");
 
             int decorationCount = random.Next(5, 10);
             for (int i = 0; i < decorationCount; i++)
             {
                 var position = RandomFloorPosition();
                 var scale = new Vector3(UnityEngine.Random.Range(0.5f, 1.3f), UnityEngine.Random.Range(0.25f, 0.8f), UnityEngine.Random.Range(0.4f, 1.2f));
-                AddFurniture("随机杂物", position + Vector3.up * (scale.y * 0.5f), scale, new Color(UnityEngine.Random.Range(0.25f, 0.75f), UnityEngine.Random.Range(0.25f, 0.75f), UnityEngine.Random.Range(0.25f, 0.75f)), UnityEngine.Random.value > 0.35f);
+                AddFurniture("随机杂物", position + Vector3.up * (scale.y * 0.5f), scale, new Color(UnityEngine.Random.Range(0.25f, 0.75f), UnityEngine.Random.Range(0.25f, 0.75f), UnityEngine.Random.Range(0.25f, 0.75f)), UnityEngine.Random.value > 0.35f, "Models/Environment/Clutter_LowPoly");
             }
 
             int foodCount = random.Next(targetFoodCount + 2, targetFoodCount + 8);
@@ -354,10 +354,22 @@ namespace IfYouWereCockroach.Prototype
                 humanObject.transform.SetParent(runRoot);
                 humanObject.transform.position = RandomFloorPosition();
 
-                var visual = CreatePrimitive("Human Visual", PrimitiveType.Capsule, humanObject.transform.position + Vector3.up * 0.9f, new Vector3(0.55f, 0.9f, 0.55f), new Color(0.72f, 0.54f, 0.42f));
-                visual.transform.SetParent(humanObject.transform);
-                visual.transform.localPosition = Vector3.up * 0.9f;
-                Destroy(visual.GetComponent<Collider>());
+                var humanModel = Resources.Load<GameObject>("Models/Human/Human_LowPoly");
+                if (humanModel != null)
+                {
+                    var visual = Instantiate(humanModel, humanObject.transform);
+                    visual.name = "Human Model";
+                    visual.transform.localPosition = Vector3.zero;
+                    visual.transform.localRotation = Quaternion.identity;
+                    visual.transform.localScale = Vector3.one;
+                }
+                else
+                {
+                    var visual = CreatePrimitive("Human Visual", PrimitiveType.Capsule, humanObject.transform.position + Vector3.up * 0.9f, new Vector3(0.55f, 0.9f, 0.55f), new Color(0.72f, 0.54f, 0.42f));
+                    visual.transform.SetParent(humanObject.transform);
+                    visual.transform.localPosition = Vector3.up * 0.9f;
+                    Destroy(visual.GetComponent<Collider>());
+                }
 
                 var controller = humanObject.AddComponent<HumanController>();
                 controller.DisplayName = names[i];
@@ -378,7 +390,8 @@ namespace IfYouWereCockroach.Prototype
 
             camera.transform.SetParent(null);
             camera.clearFlags = CameraClearFlags.Skybox;
-            camera.fieldOfView = 60f;
+            camera.fieldOfView = 74f;
+            camera.nearClipPlane = 0.02f;
 
             var follow = camera.GetComponent<SimpleCameraFollow>();
             if (follow == null)
@@ -466,9 +479,14 @@ namespace IfYouWereCockroach.Prototype
             Destroy(zone.GetComponent<Collider>());
         }
 
-        private void AddFurniture(string name, Vector3 position, Vector3 scale, Color color, bool createsHideSpot)
+        private void AddFurniture(string name, Vector3 position, Vector3 scale, Color color, bool createsHideSpot, string modelResourcePath = null)
         {
             var furniture = CreatePrimitive(name, PrimitiveType.Cube, position, scale, color);
+            if (!string.IsNullOrWhiteSpace(modelResourcePath))
+            {
+                AddFurnitureVisual(furniture.transform, modelResourcePath);
+            }
+
             if (!createsHideSpot)
             {
                 return;
@@ -488,6 +506,26 @@ namespace IfYouWereCockroach.Prototype
             box.isTrigger = true;
             var hideSpot = hideObject.AddComponent<HideSpot>();
             RegisterHideSpot(hideSpot);
+        }
+
+        private void AddFurnitureVisual(Transform parent, string modelResourcePath)
+        {
+            var model = Resources.Load<GameObject>(modelResourcePath);
+            if (model == null)
+            {
+                return;
+            }
+
+            if (parent.TryGetComponent<Renderer>(out var renderer))
+            {
+                renderer.enabled = false;
+            }
+
+            var visual = Instantiate(model, parent);
+            visual.name = "Modeled Visual";
+            visual.transform.localPosition = new Vector3(0f, -0.5f, 0f);
+            visual.transform.localRotation = Quaternion.identity;
+            visual.transform.localScale = Vector3.one;
         }
 
         private Vector3 RandomFloorPosition()
@@ -525,7 +563,7 @@ namespace IfYouWereCockroach.Prototype
                     $"存活时间：{FormatTime(survivalTime)}\n" +
                     $"声音：{Percent(player != null ? player.NoiseLevel : 0f)}  警觉：{Percent(suspicion)}\n" +
                     $"位置状态：{hidden}  种子：{seed}\n" +
-                    "WASD 移动 / Shift 疾跑 / E 产卵 / R 重开";
+                    "第一视角：WASD 移动 / Shift 疾跑 / E 产卵 / R 重开";
             }
 
             if (tasksText != null)
@@ -1142,6 +1180,7 @@ namespace IfYouWereCockroach.Prototype
         public Transform Target { get; set; }
 
         private Vector3 velocity;
+        private float bob;
 
         private void LateUpdate()
         {
@@ -1150,9 +1189,17 @@ namespace IfYouWereCockroach.Prototype
                 return;
             }
 
-            var desired = Target.position + new Vector3(0f, 6.5f, -5.7f);
-            transform.position = Vector3.SmoothDamp(transform.position, desired, ref velocity, 0.16f);
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(54f, 0f, 0f), Time.deltaTime * 8f);
+            var player = Target.GetComponent<CockroachPlayerController>();
+            float movement = player != null ? player.MoveIntensity : 0f;
+            float bobSpeed = player != null && player.IsSprinting ? 18f : 10f;
+            bob += Time.deltaTime * bobSpeed * movement;
+
+            Vector3 eyeOffset = Vector3.up * (0.18f + Mathf.Sin(bob) * movement * 0.018f) + Target.forward * 0.18f;
+            var desired = Target.position + eyeOffset;
+            transform.position = Vector3.SmoothDamp(transform.position, desired, ref velocity, 0.045f);
+
+            Vector3 lookDirection = (Target.forward + Vector3.down * 0.045f).normalized;
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDirection, Vector3.up), Time.deltaTime * 18f);
         }
     }
 }
