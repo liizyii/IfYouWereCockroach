@@ -619,10 +619,15 @@ namespace IfYouWereCockroach.Prototype
 
         private GameObject CreateFood(string displayName, Vector3 floorPosition)
         {
-            var root = CreatePrimitive($"Food - {displayName}", PrimitiveType.Sphere, floorPosition + Vector3.up * 0.12f, Vector3.one * 0.9f, Color.white);
+            var root = CreatePrimitive($"Food - {displayName}", PrimitiveType.Sphere, floorPosition + Vector3.up * 0.12f, Vector3.one * 0.34f, Color.white);
             if (root.TryGetComponent<Renderer>(out var renderer))
             {
                 renderer.enabled = false;
+            }
+            if (root.TryGetComponent<SphereCollider>(out var foodCollider))
+            {
+                foodCollider.radius = 2.2f;
+                foodCollider.isTrigger = true;
             }
 
             Color color = FoodColor(displayName);
@@ -782,6 +787,9 @@ namespace IfYouWereCockroach.Prototype
                 CreateVisualPrimitive(parent, "fridge_door", PrimitiveType.Cube, new Vector3(0f, -0.18f, -0.52f), new Vector3(0.92f, 0.52f, 0.04f), new Color(0.82f, 0.88f, 0.87f));
                 CreateVisualPrimitive(parent, "fridge_handle_top", PrimitiveType.Cube, new Vector3(0.32f, 0.2f, -0.57f), new Vector3(0.04f, 0.22f, 0.05f), metal);
                 CreateVisualPrimitive(parent, "fridge_handle_bottom", PrimitiveType.Cube, new Vector3(0.32f, -0.2f, -0.57f), new Vector3(0.04f, 0.32f, 0.05f), metal);
+                CreateVisualPrimitive(parent, "fridge_vent", PrimitiveType.Cube, new Vector3(-0.18f, -0.43f, -0.57f), new Vector3(0.38f, 0.045f, 0.035f), new Color(0.62f, 0.68f, 0.68f));
+                CreateVisualPrimitive(parent, "fridge_magnet_red", PrimitiveType.Cube, new Vector3(-0.28f, 0.05f, -0.575f), new Vector3(0.11f, 0.08f, 0.025f), new Color(0.7f, 0.08f, 0.08f));
+                CreateVisualPrimitive(parent, "fridge_magnet_note", PrimitiveType.Cube, new Vector3(-0.12f, -0.1f, -0.575f), new Vector3(0.16f, 0.12f, 0.025f), new Color(0.95f, 0.86f, 0.46f));
             }
             else if (name.Contains("灶台"))
             {
@@ -790,11 +798,22 @@ namespace IfYouWereCockroach.Prototype
                 CreateVisualPrimitive(parent, "oven_window", PrimitiveType.Cube, new Vector3(0f, -0.1f, -0.52f), new Vector3(0.5f, 0.3f, 0.04f), new Color(0.05f, 0.08f, 0.09f));
                 CreateVisualPrimitive(parent, "left_burner", PrimitiveType.Cylinder, new Vector3(-0.23f, 0.54f, -0.18f), new Vector3(0.16f, 0.025f, 0.16f), black);
                 CreateVisualPrimitive(parent, "right_burner", PrimitiveType.Cylinder, new Vector3(0.23f, 0.54f, 0.18f), new Vector3(0.16f, 0.025f, 0.16f), black);
+                CreateVisualPrimitive(parent, "front_left_burner", PrimitiveType.Cylinder, new Vector3(-0.28f, 0.55f, 0.24f), new Vector3(0.13f, 0.02f, 0.13f), black * 1.6f);
+                CreateVisualPrimitive(parent, "front_right_burner", PrimitiveType.Cylinder, new Vector3(0.28f, 0.55f, -0.24f), new Vector3(0.13f, 0.02f, 0.13f), black * 1.6f);
+                for (int i = 0; i < 4; i++)
+                {
+                    CreateVisualPrimitive(parent, "stove_knob", PrimitiveType.Cylinder, new Vector3(-0.3f + i * 0.2f, 0.22f, -0.56f), new Vector3(0.055f, 0.035f, 0.055f), metal, Quaternion.Euler(90f, 0f, 0f));
+                }
             }
             else if (name.Contains("餐桌"))
             {
                 CreateVisualPrimitive(parent, "table_top", PrimitiveType.Cube, new Vector3(0f, 0.35f, 0f), new Vector3(1f, 0.12f, 1f), wood);
                 AddTableLegs(parent, darkWood, 0.33f, 0.27f, 0.06f, 0.72f);
+                CreateVisualPrimitive(parent, "table_runner", PrimitiveType.Cube, new Vector3(0f, 0.43f, 0f), new Vector3(0.18f, 0.025f, 0.9f), new Color(0.74f, 0.55f, 0.36f));
+                CreateVisualPrimitive(parent, "table_plate", PrimitiveType.Cylinder, new Vector3(0.18f, 0.48f, -0.05f), new Vector3(0.18f, 0.025f, 0.18f), new Color(0.9f, 0.9f, 0.84f));
+                AddChair(parent, new Vector3(-0.7f, -0.06f, 0f), Quaternion.Euler(0f, 90f, 0f), wood);
+                AddChair(parent, new Vector3(0.7f, -0.06f, 0f), Quaternion.Euler(0f, -90f, 0f), wood);
+                AddChair(parent, new Vector3(0f, -0.06f, -0.72f), Quaternion.identity, wood);
             }
             else if (name.Contains("沙发"))
             {
@@ -802,12 +821,19 @@ namespace IfYouWereCockroach.Prototype
                 CreateVisualPrimitive(parent, "sofa_back", PrimitiveType.Cube, new Vector3(0f, 0.18f, 0.42f), new Vector3(1f, 0.7f, 0.18f), fabric);
                 CreateVisualPrimitive(parent, "sofa_left_arm", PrimitiveType.Cube, new Vector3(-0.48f, 0f, -0.02f), new Vector3(0.12f, 0.68f, 0.8f), fabricLight);
                 CreateVisualPrimitive(parent, "sofa_right_arm", PrimitiveType.Cube, new Vector3(0.48f, 0f, -0.02f), new Vector3(0.12f, 0.68f, 0.8f), fabricLight);
+                CreateVisualPrimitive(parent, "sofa_left_cushion", PrimitiveType.Cube, new Vector3(-0.22f, 0.09f, -0.18f), new Vector3(0.38f, 0.08f, 0.42f), fabricLight * 1.1f);
+                CreateVisualPrimitive(parent, "sofa_right_cushion", PrimitiveType.Cube, new Vector3(0.22f, 0.09f, -0.18f), new Vector3(0.38f, 0.08f, 0.42f), fabricLight * 1.1f);
+                CreateVisualPrimitive(parent, "sofa_pillow", PrimitiveType.Cube, new Vector3(-0.28f, 0.24f, 0.23f), new Vector3(0.2f, 0.18f, 0.08f), new Color(0.62f, 0.37f, 0.27f), Quaternion.Euler(0f, 0f, -8f));
+                AddTableLegs(parent, darkWood, 0.38f, 0.28f, 0.04f, 0.28f);
             }
             else if (name.Contains("茶几"))
             {
                 CreateVisualPrimitive(parent, "coffee_table_top", PrimitiveType.Cube, new Vector3(0f, 0.24f, 0f), new Vector3(1f, 0.1f, 1f), wood);
                 CreateVisualPrimitive(parent, "coffee_table_shelf", PrimitiveType.Cube, new Vector3(0f, -0.08f, 0f), new Vector3(0.82f, 0.07f, 0.82f), darkWood);
                 AddTableLegs(parent, darkWood, 0.42f, 0.33f, 0.05f, 0.62f);
+                CreateVisualPrimitive(parent, "book_stack", PrimitiveType.Cube, new Vector3(-0.2f, 0.33f, 0.12f), new Vector3(0.3f, 0.055f, 0.2f), new Color(0.12f, 0.2f, 0.42f), Quaternion.Euler(0f, -12f, 0f));
+                CreateVisualPrimitive(parent, "remote_control", PrimitiveType.Cube, new Vector3(0.22f, 0.33f, -0.16f), new Vector3(0.09f, 0.035f, 0.34f), black, Quaternion.Euler(0f, 25f, 0f));
+                CreateVisualPrimitive(parent, "mug", PrimitiveType.Cylinder, new Vector3(0.22f, 0.38f, 0.18f), new Vector3(0.095f, 0.13f, 0.095f), new Color(0.82f, 0.82f, 0.74f));
             }
             else if (name.Contains("床"))
             {
@@ -816,18 +842,42 @@ namespace IfYouWereCockroach.Prototype
                 CreateVisualPrimitive(parent, "blanket", PrimitiveType.Cube, new Vector3(0f, 0.22f, -0.12f), new Vector3(0.92f, 0.13f, 0.55f), new Color(0.26f, 0.35f, 0.52f));
                 CreateVisualPrimitive(parent, "pillow_left", PrimitiveType.Cube, new Vector3(-0.22f, 0.26f, 0.32f), new Vector3(0.28f, 0.12f, 0.22f), new Color(0.88f, 0.86f, 0.78f));
                 CreateVisualPrimitive(parent, "pillow_right", PrimitiveType.Cube, new Vector3(0.22f, 0.26f, 0.32f), new Vector3(0.28f, 0.12f, 0.22f), new Color(0.88f, 0.86f, 0.78f));
+                CreateVisualPrimitive(parent, "headboard", PrimitiveType.Cube, new Vector3(0f, 0.08f, 0.52f), new Vector3(1f, 0.62f, 0.1f), darkWood);
+                CreateVisualPrimitive(parent, "blanket_fold", PrimitiveType.Cube, new Vector3(0f, 0.31f, 0.16f), new Vector3(0.92f, 0.055f, 0.08f), new Color(0.18f, 0.26f, 0.42f));
             }
             else if (name.Contains("洗手台"))
             {
                 CreateVisualPrimitive(parent, "sink_cabinet", PrimitiveType.Cube, new Vector3(0f, -0.08f, 0f), new Vector3(1f, 0.82f, 1f), white);
                 CreateVisualPrimitive(parent, "sink_basin", PrimitiveType.Cube, new Vector3(0f, 0.38f, 0f), new Vector3(0.84f, 0.12f, 0.78f), new Color(0.92f, 0.94f, 0.91f));
                 CreateVisualPrimitive(parent, "faucet", PrimitiveType.Cube, new Vector3(0f, 0.55f, -0.22f), new Vector3(0.08f, 0.26f, 0.08f), metal);
+                CreateVisualPrimitive(parent, "sink_drain", PrimitiveType.Cylinder, new Vector3(0f, 0.46f, 0.08f), new Vector3(0.09f, 0.018f, 0.09f), metal);
+                CreateVisualPrimitive(parent, "tap_left", PrimitiveType.Cylinder, new Vector3(-0.16f, 0.52f, -0.24f), new Vector3(0.055f, 0.045f, 0.055f), metal);
+                CreateVisualPrimitive(parent, "tap_right", PrimitiveType.Cylinder, new Vector3(0.16f, 0.52f, -0.24f), new Vector3(0.055f, 0.045f, 0.055f), metal);
+                CreateVisualPrimitive(parent, "soap_bottle", PrimitiveType.Cube, new Vector3(0.34f, 0.56f, 0.24f), new Vector3(0.12f, 0.18f, 0.1f), new Color(0.36f, 0.75f, 0.68f));
             }
             else
             {
                 CreateVisualPrimitive(parent, "clutter_box", PrimitiveType.Cube, new Vector3(-0.16f, -0.05f, 0.04f), new Vector3(0.52f, 0.7f, 0.52f), baseColor);
                 CreateVisualPrimitive(parent, "clutter_can", PrimitiveType.Cylinder, new Vector3(0.26f, 0.02f, -0.18f), new Vector3(0.18f, 0.34f, 0.18f), metal);
+                CreateVisualPrimitive(parent, "folded_cloth", PrimitiveType.Cube, new Vector3(0.1f, 0.26f, 0.18f), new Vector3(0.36f, 0.08f, 0.28f), new Color(0.48f, 0.18f, 0.2f), Quaternion.Euler(0f, 18f, 0f));
+                CreateVisualPrimitive(parent, "paper_label", PrimitiveType.Cube, new Vector3(-0.16f, 0.16f, -0.23f), new Vector3(0.28f, 0.18f, 0.025f), new Color(0.88f, 0.8f, 0.58f));
             }
+        }
+
+        private void AddChair(Transform parent, Vector3 localPosition, Quaternion localRotation, Color color)
+        {
+            var root = new GameObject("dining_chair").transform;
+            root.SetParent(parent, false);
+            root.localPosition = localPosition;
+            root.localRotation = localRotation;
+
+            var cushion = new Color(0.38f, 0.26f, 0.18f);
+            CreateVisualPrimitive(root, "chair_seat", PrimitiveType.Cube, new Vector3(0f, 0.1f, 0f), new Vector3(0.34f, 0.08f, 0.34f), cushion);
+            CreateVisualPrimitive(root, "chair_back", PrimitiveType.Cube, new Vector3(0f, 0.36f, 0.16f), new Vector3(0.34f, 0.42f, 0.07f), color);
+            CreateVisualPrimitive(root, "chair_left_leg", PrimitiveType.Cube, new Vector3(-0.13f, -0.08f, -0.12f), new Vector3(0.045f, 0.34f, 0.045f), color);
+            CreateVisualPrimitive(root, "chair_right_leg", PrimitiveType.Cube, new Vector3(0.13f, -0.08f, -0.12f), new Vector3(0.045f, 0.34f, 0.045f), color);
+            CreateVisualPrimitive(root, "chair_back_left_leg", PrimitiveType.Cube, new Vector3(-0.13f, -0.08f, 0.13f), new Vector3(0.045f, 0.34f, 0.045f), color);
+            CreateVisualPrimitive(root, "chair_back_right_leg", PrimitiveType.Cube, new Vector3(0.13f, -0.08f, 0.13f), new Vector3(0.045f, 0.34f, 0.045f), color);
         }
 
         private void AddTableLegs(Transform parent, Color color, float x, float z, float thickness, float height)
@@ -1236,7 +1286,7 @@ namespace IfYouWereCockroach.Prototype
 
     public sealed class FoodItem : MonoBehaviour
     {
-        private const float CaptureRadius = 0.7f;
+        private const float CaptureRadius = 0.95f;
 
         public string DisplayName { get; set; }
         public bool Eaten { get; private set; }
@@ -1576,6 +1626,8 @@ namespace IfYouWereCockroach.Prototype
         private float waitTimer;
         private float detectionCooldown;
         private float activitySoundTimer;
+        private float idleLookTimer;
+        private Quaternion idleLookRotation = Quaternion.identity;
         private bool chasing;
 
         public string DisplayName { get; set; }
@@ -1595,6 +1647,7 @@ namespace IfYouWereCockroach.Prototype
             stepClip = ProceduralAudio.CreateClickBurst("Human Footstep", 0.18f, 170f, 2);
             sitClip = ProceduralAudio.CreateTone("Human Sit Fabric", 0.26f, 95f, 0.35f);
             eatClip = ProceduralAudio.CreateClickBurst("Human Eating", 0.38f, 520f, 6);
+            idleLookRotation = transform.rotation;
             PickDestination();
         }
 
@@ -1607,9 +1660,16 @@ namespace IfYouWereCockroach.Prototype
             }
 
             detectionCooldown -= Time.deltaTime;
-            bool canSee = CanSeePlayer(game.Player);
-            bool canHear = CanHearPlayer(game.Player);
-            chasing = canSee || canHear || (chasing && Vector3.Distance(transform.position, game.Player.transform.position) < 5.5f && !game.Player.IsHidden);
+            float playerDistance = Vector3.Distance(transform.position, game.Player.transform.position);
+            bool closeContact = !game.Player.IsHidden && playerDistance < 1.35f;
+            bool canSee = closeContact || CanSeePlayer(game.Player);
+            bool canHear = closeContact || CanHearPlayer(game.Player);
+            if (closeContact)
+            {
+                game.AddSuspicion(Time.deltaTime * 0.85f);
+            }
+
+            chasing = canSee || canHear || (chasing && playerDistance < 6.4f && !game.Player.IsHidden);
 
             if (chasing)
             {
@@ -1658,6 +1718,7 @@ namespace IfYouWereCockroach.Prototype
             if (waitTimer > 0f)
             {
                 waitTimer -= Time.deltaTime;
+                LookAroundWhileIdle();
                 UpdateActivitySounds();
                 return;
             }
@@ -1693,6 +1754,41 @@ namespace IfYouWereCockroach.Prototype
                 activitySoundTimer = speed > 1.5f ? 0.48f : 0.82f;
                 audioSource.PlayOneShot(stepClip, speed > 1.5f ? 0.12f : 0.055f);
             }
+        }
+
+        private void LookAroundWhileIdle()
+        {
+            idleLookTimer -= Time.deltaTime;
+            if (idleLookTimer <= 0f)
+            {
+                Vector3 lookTarget = Vector3.zero;
+                var game = CockroachGameManager.Instance;
+                if (game != null && game.Player != null && !game.Player.IsHidden && Vector3.Distance(transform.position, game.Player.transform.position) < 4.2f)
+                {
+                    lookTarget = game.Player.transform.position;
+                }
+                else
+                {
+                    lookTarget = home + new Vector3(UnityEngine.Random.Range(-2.5f, 2.5f), 0f, UnityEngine.Random.Range(-2.2f, 2.2f));
+                    lookTarget.x = Mathf.Clamp(lookTarget.x, -6.8f, 6.8f);
+                    lookTarget.z = Mathf.Clamp(lookTarget.z, -5.0f, 5.0f);
+                }
+
+                var flat = new Vector3(lookTarget.x - transform.position.x, 0f, lookTarget.z - transform.position.z);
+                if (flat.sqrMagnitude < 0.04f)
+                {
+                    flat = new Vector3(UnityEngine.Random.Range(-1f, 1f), 0f, UnityEngine.Random.Range(-1f, 1f));
+                    if (flat.sqrMagnitude < 0.04f)
+                    {
+                        flat = transform.forward;
+                    }
+                }
+
+                idleLookRotation = Quaternion.LookRotation(flat.normalized);
+                idleLookTimer = UnityEngine.Random.Range(0.8f, 1.8f);
+            }
+
+            transform.rotation = Quaternion.Slerp(transform.rotation, idleLookRotation, Time.deltaTime * 2.2f);
         }
 
         private HumanActivity RandomIdleActivity()
@@ -1774,12 +1870,18 @@ namespace IfYouWereCockroach.Prototype
 
             var toPlayer = player.transform.position - transform.position;
             var flat = new Vector3(toPlayer.x, 0f, toPlayer.z);
-            if (flat.magnitude > 5.2f)
+            float distance = flat.magnitude;
+            if (distance < 1.6f)
+            {
+                return true;
+            }
+
+            if (distance > 7.2f)
             {
                 return false;
             }
 
-            if (Vector3.Angle(transform.forward, flat.normalized) > 58f)
+            if (Vector3.Angle(transform.forward, flat.normalized) > 82f)
             {
                 return false;
             }
@@ -1790,19 +1892,19 @@ namespace IfYouWereCockroach.Prototype
         private bool CanHearPlayer(CockroachPlayerController player)
         {
             float distance = Vector3.Distance(transform.position, player.transform.position);
-            float hearing = Mathf.Lerp(1.4f, 6.5f, player.NoiseLevel);
+            float hearing = Mathf.Lerp(1.8f, 8.2f, player.NoiseLevel);
             if (player.IsHidden)
             {
                 hearing *= 0.45f;
             }
 
-            bool heard = distance < hearing && player.NoiseLevel > 0.2f;
+            bool heard = distance < hearing && player.NoiseLevel > 0.12f;
             if (heard)
             {
-                CockroachGameManager.Instance.AddSuspicion(Time.deltaTime * 0.28f);
+                CockroachGameManager.Instance.AddSuspicion(Time.deltaTime * 0.42f);
             }
 
-            return heard && CockroachGameManager.Instance.Suspicion > 0.35f;
+            return heard && (distance < 2.4f || CockroachGameManager.Instance.Suspicion > 0.22f);
         }
 
         private bool HasLineOfSight(CockroachPlayerController player)
@@ -1822,8 +1924,8 @@ namespace IfYouWereCockroach.Prototype
         {
             var offset = new Vector3(UnityEngine.Random.Range(-4.5f, 4.5f), 0f, UnityEngine.Random.Range(-3.5f, 3.5f));
             destination = home + offset;
-            destination.x = Mathf.Clamp(destination.x, -7.6f, 7.6f);
-            destination.z = Mathf.Clamp(destination.z, -5.8f, 5.8f);
+            destination.x = Mathf.Clamp(destination.x, -6.8f, 6.8f);
+            destination.z = Mathf.Clamp(destination.z, -5.0f, 5.0f);
         }
     }
 
