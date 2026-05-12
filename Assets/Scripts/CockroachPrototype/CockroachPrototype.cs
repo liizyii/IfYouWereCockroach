@@ -354,22 +354,7 @@ namespace IfYouWereCockroach.Prototype
                 humanObject.transform.SetParent(runRoot);
                 humanObject.transform.position = RandomFloorPosition();
 
-                var humanModel = Resources.Load<GameObject>("Models/Human/Human_LowPoly");
-                if (humanModel != null)
-                {
-                    var visual = Instantiate(humanModel, humanObject.transform);
-                    visual.name = "Human Model";
-                    visual.transform.localPosition = Vector3.zero;
-                    visual.transform.localRotation = Quaternion.identity;
-                    visual.transform.localScale = Vector3.one;
-                }
-                else
-                {
-                    var visual = CreatePrimitive("Human Visual", PrimitiveType.Capsule, humanObject.transform.position + Vector3.up * 0.9f, new Vector3(0.55f, 0.9f, 0.55f), new Color(0.72f, 0.54f, 0.42f));
-                    visual.transform.SetParent(humanObject.transform);
-                    visual.transform.localPosition = Vector3.up * 0.9f;
-                    Destroy(visual.GetComponent<Collider>());
-                }
+                AddHumanVisual(humanObject.transform, i);
 
                 var controller = humanObject.AddComponent<HumanController>();
                 controller.DisplayName = names[i];
@@ -479,13 +464,30 @@ namespace IfYouWereCockroach.Prototype
             Destroy(zone.GetComponent<Collider>());
         }
 
+        private GameObject CreateVisualPrimitive(Transform parent, string name, PrimitiveType type, Vector3 localPosition, Vector3 localScale, Color color, Quaternion? localRotation = null)
+        {
+            var gameObject = GameObject.CreatePrimitive(type);
+            gameObject.name = name;
+            gameObject.transform.SetParent(parent, false);
+            gameObject.transform.localPosition = localPosition;
+            gameObject.transform.localRotation = localRotation ?? Quaternion.identity;
+            gameObject.transform.localScale = localScale;
+
+            if (gameObject.TryGetComponent<Collider>(out var collider))
+            {
+                Destroy(collider);
+            }
+
+            var renderer = gameObject.GetComponent<Renderer>();
+            renderer.material = new Material(Shader.Find("Standard"));
+            renderer.material.color = color;
+            return gameObject;
+        }
+
         private void AddFurniture(string name, Vector3 position, Vector3 scale, Color color, bool createsHideSpot, string modelResourcePath = null)
         {
             var furniture = CreatePrimitive(name, PrimitiveType.Cube, position, scale, color);
-            if (!string.IsNullOrWhiteSpace(modelResourcePath))
-            {
-                AddFurnitureVisual(furniture.transform, modelResourcePath);
-            }
+            AddFurnitureVisual(furniture.transform, name, color);
 
             if (!createsHideSpot)
             {
@@ -508,24 +510,102 @@ namespace IfYouWereCockroach.Prototype
             RegisterHideSpot(hideSpot);
         }
 
-        private void AddFurnitureVisual(Transform parent, string modelResourcePath)
+        private void AddFurnitureVisual(Transform parent, string name, Color baseColor)
         {
-            var model = Resources.Load<GameObject>(modelResourcePath);
-            if (model == null)
-            {
-                return;
-            }
-
             if (parent.TryGetComponent<Renderer>(out var renderer))
             {
                 renderer.enabled = false;
             }
 
-            var visual = Instantiate(model, parent);
-            visual.name = "Modeled Visual";
-            visual.transform.localPosition = new Vector3(0f, -0.5f, 0f);
-            visual.transform.localRotation = Quaternion.identity;
-            visual.transform.localScale = Vector3.one;
+            var wood = new Color(0.38f, 0.23f, 0.12f);
+            var darkWood = new Color(0.2f, 0.11f, 0.055f);
+            var metal = new Color(0.56f, 0.58f, 0.57f);
+            var black = new Color(0.04f, 0.04f, 0.045f);
+            var fabric = new Color(0.22f, 0.34f, 0.43f);
+            var fabricLight = new Color(0.34f, 0.48f, 0.55f);
+            var white = new Color(0.86f, 0.9f, 0.88f);
+
+            if (name.Contains("冰箱"))
+            {
+                CreateVisualPrimitive(parent, "fridge_body", PrimitiveType.Cube, Vector3.zero, Vector3.one, white);
+                CreateVisualPrimitive(parent, "freezer_door", PrimitiveType.Cube, new Vector3(0f, 0.18f, -0.52f), new Vector3(0.92f, 0.34f, 0.04f), new Color(0.92f, 0.96f, 0.95f));
+                CreateVisualPrimitive(parent, "fridge_door", PrimitiveType.Cube, new Vector3(0f, -0.18f, -0.52f), new Vector3(0.92f, 0.52f, 0.04f), new Color(0.82f, 0.88f, 0.87f));
+                CreateVisualPrimitive(parent, "fridge_handle_top", PrimitiveType.Cube, new Vector3(0.32f, 0.2f, -0.57f), new Vector3(0.04f, 0.22f, 0.05f), metal);
+                CreateVisualPrimitive(parent, "fridge_handle_bottom", PrimitiveType.Cube, new Vector3(0.32f, -0.2f, -0.57f), new Vector3(0.04f, 0.32f, 0.05f), metal);
+            }
+            else if (name.Contains("灶台"))
+            {
+                CreateVisualPrimitive(parent, "stove_base", PrimitiveType.Cube, Vector3.zero, Vector3.one, black);
+                CreateVisualPrimitive(parent, "stove_top", PrimitiveType.Cube, new Vector3(0f, 0.47f, 0f), new Vector3(1.04f, 0.08f, 1.04f), metal);
+                CreateVisualPrimitive(parent, "oven_window", PrimitiveType.Cube, new Vector3(0f, -0.1f, -0.52f), new Vector3(0.5f, 0.3f, 0.04f), new Color(0.05f, 0.08f, 0.09f));
+                CreateVisualPrimitive(parent, "left_burner", PrimitiveType.Cylinder, new Vector3(-0.23f, 0.54f, -0.18f), new Vector3(0.16f, 0.025f, 0.16f), black);
+                CreateVisualPrimitive(parent, "right_burner", PrimitiveType.Cylinder, new Vector3(0.23f, 0.54f, 0.18f), new Vector3(0.16f, 0.025f, 0.16f), black);
+            }
+            else if (name.Contains("餐桌"))
+            {
+                CreateVisualPrimitive(parent, "table_top", PrimitiveType.Cube, new Vector3(0f, 0.35f, 0f), new Vector3(1f, 0.12f, 1f), wood);
+                AddTableLegs(parent, darkWood, 0.33f, 0.27f, 0.06f, 0.72f);
+            }
+            else if (name.Contains("沙发"))
+            {
+                CreateVisualPrimitive(parent, "sofa_seat", PrimitiveType.Cube, new Vector3(0f, -0.15f, -0.05f), new Vector3(1f, 0.42f, 0.72f), fabric);
+                CreateVisualPrimitive(parent, "sofa_back", PrimitiveType.Cube, new Vector3(0f, 0.18f, 0.42f), new Vector3(1f, 0.7f, 0.18f), fabric);
+                CreateVisualPrimitive(parent, "sofa_left_arm", PrimitiveType.Cube, new Vector3(-0.48f, 0f, -0.02f), new Vector3(0.12f, 0.68f, 0.8f), fabricLight);
+                CreateVisualPrimitive(parent, "sofa_right_arm", PrimitiveType.Cube, new Vector3(0.48f, 0f, -0.02f), new Vector3(0.12f, 0.68f, 0.8f), fabricLight);
+            }
+            else if (name.Contains("茶几"))
+            {
+                CreateVisualPrimitive(parent, "coffee_table_top", PrimitiveType.Cube, new Vector3(0f, 0.24f, 0f), new Vector3(1f, 0.1f, 1f), wood);
+                CreateVisualPrimitive(parent, "coffee_table_shelf", PrimitiveType.Cube, new Vector3(0f, -0.08f, 0f), new Vector3(0.82f, 0.07f, 0.82f), darkWood);
+                AddTableLegs(parent, darkWood, 0.42f, 0.33f, 0.05f, 0.62f);
+            }
+            else if (name.Contains("床"))
+            {
+                CreateVisualPrimitive(parent, "bed_frame", PrimitiveType.Cube, new Vector3(0f, -0.25f, 0f), new Vector3(1f, 0.25f, 1f), darkWood);
+                CreateVisualPrimitive(parent, "mattress", PrimitiveType.Cube, new Vector3(0f, 0.02f, 0f), new Vector3(0.92f, 0.28f, 0.92f), new Color(0.78f, 0.78f, 0.72f));
+                CreateVisualPrimitive(parent, "blanket", PrimitiveType.Cube, new Vector3(0f, 0.22f, -0.12f), new Vector3(0.92f, 0.13f, 0.55f), new Color(0.26f, 0.35f, 0.52f));
+                CreateVisualPrimitive(parent, "pillow_left", PrimitiveType.Cube, new Vector3(-0.22f, 0.26f, 0.32f), new Vector3(0.28f, 0.12f, 0.22f), new Color(0.88f, 0.86f, 0.78f));
+                CreateVisualPrimitive(parent, "pillow_right", PrimitiveType.Cube, new Vector3(0.22f, 0.26f, 0.32f), new Vector3(0.28f, 0.12f, 0.22f), new Color(0.88f, 0.86f, 0.78f));
+            }
+            else if (name.Contains("洗手台"))
+            {
+                CreateVisualPrimitive(parent, "sink_cabinet", PrimitiveType.Cube, new Vector3(0f, -0.08f, 0f), new Vector3(1f, 0.82f, 1f), white);
+                CreateVisualPrimitive(parent, "sink_basin", PrimitiveType.Cube, new Vector3(0f, 0.38f, 0f), new Vector3(0.84f, 0.12f, 0.78f), new Color(0.92f, 0.94f, 0.91f));
+                CreateVisualPrimitive(parent, "faucet", PrimitiveType.Cube, new Vector3(0f, 0.55f, -0.22f), new Vector3(0.08f, 0.26f, 0.08f), metal);
+            }
+            else
+            {
+                CreateVisualPrimitive(parent, "clutter_box", PrimitiveType.Cube, new Vector3(-0.16f, -0.05f, 0.04f), new Vector3(0.52f, 0.7f, 0.52f), baseColor);
+                CreateVisualPrimitive(parent, "clutter_can", PrimitiveType.Cylinder, new Vector3(0.26f, 0.02f, -0.18f), new Vector3(0.18f, 0.34f, 0.18f), metal);
+            }
+        }
+
+        private void AddTableLegs(Transform parent, Color color, float x, float z, float thickness, float height)
+        {
+            float y = -0.15f;
+            CreateVisualPrimitive(parent, "leg_front_left", PrimitiveType.Cube, new Vector3(-x, y, -z), new Vector3(thickness, height, thickness), color);
+            CreateVisualPrimitive(parent, "leg_front_right", PrimitiveType.Cube, new Vector3(x, y, -z), new Vector3(thickness, height, thickness), color);
+            CreateVisualPrimitive(parent, "leg_back_left", PrimitiveType.Cube, new Vector3(-x, y, z), new Vector3(thickness, height, thickness), color);
+            CreateVisualPrimitive(parent, "leg_back_right", PrimitiveType.Cube, new Vector3(x, y, z), new Vector3(thickness, height, thickness), color);
+        }
+
+        private void AddHumanVisual(Transform parent, int variant)
+        {
+            var skin = new Color(0.72f, 0.52f, 0.39f);
+            var shirtColors = new[] { new Color(0.32f, 0.4f, 0.5f), new Color(0.48f, 0.28f, 0.26f), new Color(0.34f, 0.44f, 0.31f), new Color(0.42f, 0.34f, 0.5f) };
+            var shirt = shirtColors[variant % shirtColors.Length];
+            var pants = new Color(0.11f, 0.14f, 0.18f);
+
+            CreateVisualPrimitive(parent, "torso", PrimitiveType.Capsule, new Vector3(0f, 1.05f, 0f), new Vector3(0.28f, 0.44f, 0.22f), shirt);
+            CreateVisualPrimitive(parent, "head", PrimitiveType.Sphere, new Vector3(0f, 1.65f, 0f), new Vector3(0.24f, 0.24f, 0.24f), skin);
+            CreateVisualPrimitive(parent, "left_eye", PrimitiveType.Sphere, new Vector3(-0.055f, 1.68f, 0.2f), new Vector3(0.028f, 0.028f, 0.018f), Color.black);
+            CreateVisualPrimitive(parent, "right_eye", PrimitiveType.Sphere, new Vector3(0.055f, 1.68f, 0.2f), new Vector3(0.028f, 0.028f, 0.018f), Color.black);
+            CreateVisualPrimitive(parent, "left_arm", PrimitiveType.Cube, new Vector3(-0.32f, 1f, 0f), new Vector3(0.08f, 0.72f, 0.08f), skin, Quaternion.Euler(0f, 0f, -8f));
+            CreateVisualPrimitive(parent, "right_arm", PrimitiveType.Cube, new Vector3(0.32f, 1f, 0f), new Vector3(0.08f, 0.72f, 0.08f), skin, Quaternion.Euler(0f, 0f, 8f));
+            CreateVisualPrimitive(parent, "left_leg", PrimitiveType.Cube, new Vector3(-0.1f, 0.45f, 0f), new Vector3(0.1f, 0.82f, 0.1f), pants);
+            CreateVisualPrimitive(parent, "right_leg", PrimitiveType.Cube, new Vector3(0.1f, 0.45f, 0f), new Vector3(0.1f, 0.82f, 0.1f), pants);
+            CreateVisualPrimitive(parent, "left_foot", PrimitiveType.Cube, new Vector3(-0.1f, 0.07f, 0.13f), new Vector3(0.14f, 0.08f, 0.26f), Color.black);
+            CreateVisualPrimitive(parent, "right_foot", PrimitiveType.Cube, new Vector3(0.1f, 0.07f, 0.13f), new Vector3(0.14f, 0.08f, 0.26f), Color.black);
         }
 
         private Vector3 RandomFloorPosition()
