@@ -164,6 +164,7 @@ namespace IfYouWereCockroach.Prototype
 
             food.MarkEaten();
             player.AddNoise(0.18f);
+            player.PlayEatSound();
             ShowEvent($"吃到了：{food.DisplayName}");
             UpdateUi();
         }
@@ -182,6 +183,11 @@ namespace IfYouWereCockroach.Prototype
 
             hasBeenDetected = true;
             suspicion = 1f;
+            if (player != null)
+            {
+                player.PlayDetectedSound();
+            }
+
             ShowEvent($"{human.DisplayName} 发现了你，快钻到家具下面或逃远！");
         }
 
@@ -204,6 +210,11 @@ namespace IfYouWereCockroach.Prototype
             }
 
             alive = false;
+            if (player != null)
+            {
+                player.PlayDeathSound();
+            }
+
             SaveScore(survivalTime);
             ShowEvent($"本局结束：{reason}。按 R 重新开始");
             UpdateUi();
@@ -230,6 +241,7 @@ namespace IfYouWereCockroach.Prototype
 
             eggsLaid += 1;
             player.AddNoise(0.08f);
+            player.PlayEggSound();
             ShowEvent($"产卵成功：{eggsLaid} 次");
         }
 
@@ -309,6 +321,7 @@ namespace IfYouWereCockroach.Prototype
                 visual.transform.localPosition = Vector3.zero;
                 visual.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
                 visual.transform.localScale = Vector3.one * 0.75f;
+                visual.AddComponent<CockroachVisualAnimator>();
                 return;
             }
 
@@ -328,6 +341,8 @@ namespace IfYouWereCockroach.Prototype
                 leg.transform.localRotation = Quaternion.Euler(0f, side * 25f, 0f);
                 Destroy(leg.GetComponent<Collider>());
             }
+
+            playerObject.AddComponent<CockroachVisualAnimator>();
         }
 
         private void BuildHumans()
@@ -577,11 +592,20 @@ namespace IfYouWereCockroach.Prototype
     public sealed class CockroachPlayerController : MonoBehaviour
     {
         private CharacterController characterController;
+        private AudioSource audioSource;
+        private AudioClip crawlLoopClip;
+        private AudioClip eatClip;
+        private AudioClip eggClip;
+        private AudioClip detectedClip;
+        private AudioClip deathClip;
         private float verticalVelocity;
         private float hideTimer;
+        private float detectedSoundCooldown;
         private int hideContacts;
 
         public float NoiseLevel { get; private set; }
+        public float MoveIntensity { get; private set; }
+        public bool IsSprinting { get; private set; }
         public bool IsHidden => hideContacts > 0;
 
         private void Awake()
@@ -591,19 +615,41 @@ namespace IfYouWereCockroach.Prototype
             characterController.height = 0.22f;
             characterController.center = new Vector3(0f, 0.11f, 0f);
             characterController.stepOffset = 0.05f;
+
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1f;
+            audioSource.minDistance = 1.5f;
+            audioSource.maxDistance = 18f;
+            audioSource.volume = 0.18f;
+
+            crawlLoopClip = ProceduralAudio.CreateCrawlLoop();
+            eatClip = ProceduralAudio.CreateClickBurst("Eat Crunch", 0.28f, 760f, 9);
+            eggClip = ProceduralAudio.CreateClickBurst("Lay Egg", 0.34f, 420f, 5);
+            detectedClip = ProceduralAudio.CreateTone("Detected Sting", 0.36f, 930f, 0.22f);
+            deathClip = ProceduralAudio.CreateTone("Death Thud", 0.52f, 120f, 0.5f);
+
+            audioSource.clip = crawlLoopClip;
+            audioSource.loop = true;
+            audioSource.Play();
         }
 
         private void Update()
         {
+            detectedSoundCooldown -= Time.deltaTime;
             if (CockroachGameManager.Instance == null || !CockroachGameManager.Instance.Alive)
             {
+                MoveIntensity = 0f;
+                IsSprinting = false;
+                UpdateCrawlAudio(0f, false);
                 return;
             }
 
             var input = new Vector3(Input.GetAxisRaw("Horizontal"), 0f, Input.GetAxisRaw("Vertical"));
             input = Vector3.ClampMagnitude(input, 1f);
-            bool sprinting = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-            float speed = sprinting ? 3.2f : 1.65f;
+            MoveIntensity = input.magnitude;
+            IsSprinting = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            float speed = IsSprinting ? 3.2f : 1.65f;
 
             var camera = Camera.main;
             Vector3 forward = camera != null ? camera.transform.forward : Vector3.forward;
@@ -632,7 +678,7 @@ namespace IfYouWereCockroach.Prototype
                 }
             }
 
-            float targetNoise = input.magnitude * (sprinting ? 0.6f : 0.28f);
+            float targetNoise = input.magnitude * (IsSprinting ? 0.6f : 0.28f);
             if (IsHidden)
             {
                 targetNoise *= 0.35f;
@@ -648,11 +694,58 @@ namespace IfYouWereCockroach.Prototype
             }
 
             NoiseLevel = Mathf.MoveTowards(NoiseLevel, targetNoise, Time.deltaTime * 1.3f);
+            UpdateCrawlAudio(input.magnitude, IsSprinting);
         }
 
         public void AddNoise(float amount)
         {
             NoiseLevel = Mathf.Clamp01(NoiseLevel + amount);
+        }
+
+        public void PlayEatSound()
+        {
+            PlayOneShot(eatClip, 0.55f);
+        }
+
+        public void PlayEggSound()
+        {
+            PlayOneShot(eggClip, 0.38f);
+        }
+
+        public void PlayDetectedSound()
+        {
+            if (detectedSoundCooldown > 0f)
+            {
+                return;
+            }
+
+            detectedSoundCooldown = 2.5f;
+            PlayOneShot(detectedClip, 0.42f);
+        }
+
+        public void PlayDeathSound()
+        {
+            PlayOneShot(deathClip, 0.5f);
+        }
+
+        private void UpdateCrawlAudio(float movement, bool sprinting)
+        {
+            if (audioSource == null)
+            {
+                return;
+            }
+
+            float hiddenMultiplier = IsHidden ? 0.35f : 1f;
+            audioSource.volume = movement * hiddenMultiplier * (sprinting ? 0.22f : 0.12f);
+            audioSource.pitch = sprinting ? 1.6f : 1f;
+        }
+
+        private void PlayOneShot(AudioClip clip, float volume)
+        {
+            if (audioSource != null && clip != null)
+            {
+                audioSource.PlayOneShot(clip, volume);
+            }
         }
 
         private void OnTriggerEnter(Collider other)
@@ -696,6 +789,198 @@ namespace IfYouWereCockroach.Prototype
 
     public sealed class HideSpot : MonoBehaviour
     {
+    }
+
+    public static class ProceduralAudio
+    {
+        private const int SampleRate = 22050;
+
+        public static AudioClip CreateCrawlLoop()
+        {
+            float duration = 0.75f;
+            int sampleCount = Mathf.CeilToInt(SampleRate * duration);
+            var data = new float[sampleCount];
+            var random = new System.Random(17);
+
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = i / (float)SampleRate;
+                float tick = 0f;
+                for (float start = 0f; start < duration; start += 0.085f)
+                {
+                    float local = t - start;
+                    if (local >= 0f && local < 0.026f)
+                    {
+                        float envelope = 1f - local / 0.026f;
+                        float noise = (float)(random.NextDouble() * 2.0 - 1.0);
+                        tick += noise * envelope * 0.17f;
+                    }
+                }
+
+                data[i] = Mathf.Clamp(tick, -0.45f, 0.45f);
+            }
+
+            var clip = AudioClip.Create("Procedural Crawl Loop", sampleCount, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateClickBurst(string name, float duration, float pitch, int bursts)
+        {
+            int sampleCount = Mathf.CeilToInt(SampleRate * duration);
+            var data = new float[sampleCount];
+            var random = new System.Random(name.GetHashCode());
+            var starts = new float[bursts];
+
+            for (int burst = 0; burst < bursts; burst++)
+            {
+                starts[burst] = burst * duration / bursts + (float)random.NextDouble() * 0.018f;
+            }
+
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = i / (float)SampleRate;
+                float value = 0f;
+                for (int burst = 0; burst < bursts; burst++)
+                {
+                    float start = starts[burst];
+                    float local = t - start;
+                    if (local >= 0f && local < 0.04f)
+                    {
+                        float envelope = Mathf.Exp(-local * 55f);
+                        float grit = (float)(random.NextDouble() * 2.0 - 1.0);
+                        value += (Mathf.Sin(2f * Mathf.PI * pitch * local) * 0.35f + grit * 0.65f) * envelope;
+                    }
+                }
+
+                data[i] = Mathf.Clamp(value * 0.38f, -0.8f, 0.8f);
+            }
+
+            var clip = AudioClip.Create(name, sampleCount, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateTone(string name, float duration, float frequency, float noiseAmount)
+        {
+            int sampleCount = Mathf.CeilToInt(SampleRate * duration);
+            var data = new float[sampleCount];
+            var random = new System.Random(name.GetHashCode());
+
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = i / (float)SampleRate;
+                float envelope = Mathf.Exp(-t * 5f) * Mathf.Clamp01(1f - t / duration);
+                float tone = Mathf.Sin(2f * Mathf.PI * frequency * t);
+                float noise = (float)(random.NextDouble() * 2.0 - 1.0) * noiseAmount;
+                data[i] = Mathf.Clamp((tone + noise) * envelope * 0.45f, -0.8f, 0.8f);
+            }
+
+            var clip = AudioClip.Create(name, sampleCount, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+    }
+
+    public sealed class CockroachVisualAnimator : MonoBehaviour
+    {
+        private readonly List<AnimatedPart> legs = new List<AnimatedPart>();
+        private readonly List<AnimatedPart> antennas = new List<AnimatedPart>();
+        private readonly List<AnimatedPart> bodyParts = new List<AnimatedPart>();
+        private CockroachPlayerController player;
+
+        private void Awake()
+        {
+            player = GetComponentInParent<CockroachPlayerController>();
+            CacheParts();
+        }
+
+        private void CacheParts()
+        {
+            legs.Clear();
+            antennas.Clear();
+            bodyParts.Clear();
+
+            foreach (var part in GetComponentsInChildren<Transform>(true))
+            {
+                if (part == transform)
+                {
+                    continue;
+                }
+
+                string lowerName = part.name.ToLowerInvariant();
+                var animated = new AnimatedPart(part);
+                if (lowerName.Contains("antenna"))
+                {
+                    antennas.Add(animated);
+                }
+                else if (lowerName.Contains("leg"))
+                {
+                    legs.Add(animated);
+                }
+                else if (lowerName.Contains("abdomen") || lowerName.Contains("thorax") || lowerName.Contains("head") || lowerName.Contains("cockroach body"))
+                {
+                    bodyParts.Add(animated);
+                }
+            }
+        }
+
+        private void Update()
+        {
+            if (player == null)
+            {
+                player = GetComponentInParent<CockroachPlayerController>();
+                if (player == null)
+                {
+                    return;
+                }
+            }
+
+            float movement = player.MoveIntensity;
+            float gaitSpeed = Mathf.Lerp(5.5f, player.IsSprinting ? 18f : 11f, movement);
+            float phase = Time.time * gaitSpeed;
+            float activity = Mathf.Lerp(0.18f, 1f, movement);
+
+            for (int i = 0; i < legs.Count; i++)
+            {
+                var leg = legs[i];
+                string name = leg.Transform.name.ToLowerInvariant();
+                float side = name.Contains("left") ? -1f : 1f;
+                float rowOffset = i * 0.85f;
+                float swing = Mathf.Sin(phase + rowOffset) * activity;
+                float lift = Mathf.Cos(phase + rowOffset) * activity;
+                leg.Transform.localRotation = leg.BaseRotation * Quaternion.Euler(lift * 10f, side * swing * 18f, swing * 8f);
+            }
+
+            for (int i = 0; i < antennas.Count; i++)
+            {
+                var antenna = antennas[i];
+                float side = antenna.Transform.name.ToLowerInvariant().Contains("left") ? -1f : 1f;
+                float sway = Mathf.Sin(Time.time * 3.2f + i * 1.7f) * (4f + activity * 8f);
+                antenna.Transform.localRotation = antenna.BaseRotation * Quaternion.Euler(0f, side * sway, sway * 0.35f);
+            }
+
+            for (int i = 0; i < bodyParts.Count; i++)
+            {
+                var body = bodyParts[i];
+                float bob = Mathf.Sin(phase * 0.5f + i * 0.7f) * movement * 0.012f;
+                body.Transform.localPosition = body.BasePosition + new Vector3(0f, 0f, bob);
+            }
+        }
+
+        private readonly struct AnimatedPart
+        {
+            public AnimatedPart(Transform transform)
+            {
+                Transform = transform;
+                BaseRotation = transform.localRotation;
+                BasePosition = transform.localPosition;
+            }
+
+            public Transform Transform { get; }
+            public Quaternion BaseRotation { get; }
+            public Vector3 BasePosition { get; }
+        }
     }
 
     public sealed class HumanController : MonoBehaviour
