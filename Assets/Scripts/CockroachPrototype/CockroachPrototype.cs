@@ -257,6 +257,7 @@ namespace IfYouWereCockroach.Prototype
             CreatePrimitive("Left Wall", PrimitiveType.Cube, new Vector3(-9f, 1.2f, 0f), new Vector3(0.18f, 2.4f, 14f), new Color(0.78f, 0.77f, 0.72f));
             CreatePrimitive("Right Wall", PrimitiveType.Cube, new Vector3(9f, 1.2f, 0f), new Vector3(0.18f, 2.4f, 14f), new Color(0.78f, 0.77f, 0.72f));
             BuildInteriorRooms();
+            BuildRoomDetails();
 
             CreateZone("Kitchen", new Vector3(-5.8f, 0.01f, 3.7f), new Vector3(5.5f, 0.02f, 5.3f), new Color(0.62f, 0.68f, 0.63f, 0.45f));
             CreateZone("Living Room", new Vector3(3.3f, 0.012f, 2.6f), new Vector3(9.7f, 0.02f, 6.8f), new Color(0.58f, 0.56f, 0.62f, 0.45f));
@@ -514,6 +515,102 @@ namespace IfYouWereCockroach.Prototype
             }
         }
 
+        private void BuildRoomDetails()
+        {
+            var trim = new Color(0.42f, 0.32f, 0.22f);
+            CreateWorldVisual("Back Baseboard", PrimitiveType.Cube, new Vector3(0f, 0.1f, 6.88f), new Vector3(17.6f, 0.12f, 0.08f), trim);
+            CreateWorldVisual("Front Baseboard", PrimitiveType.Cube, new Vector3(0f, 0.1f, -6.88f), new Vector3(17.6f, 0.12f, 0.08f), trim);
+            CreateWorldVisual("Left Baseboard", PrimitiveType.Cube, new Vector3(-8.88f, 0.1f, 0f), new Vector3(0.08f, 0.12f, 13.6f), trim);
+            CreateWorldVisual("Right Baseboard", PrimitiveType.Cube, new Vector3(8.88f, 0.1f, 0f), new Vector3(0.08f, 0.12f, 13.6f), trim);
+
+            for (int i = 0; i < 7; i++)
+            {
+                float x = -7.5f + i * 2.5f;
+                CreateWorldVisual("Floor Seam X", PrimitiveType.Cube, new Vector3(x, 0.012f, 0f), new Vector3(0.025f, 0.012f, 13.4f), new Color(0.42f, 0.4f, 0.36f));
+            }
+
+            for (int i = 0; i < 5; i++)
+            {
+                float z = -5.4f + i * 2.7f;
+                CreateWorldVisual("Floor Seam Z", PrimitiveType.Cube, new Vector3(0f, 0.014f, z), new Vector3(17.4f, 0.012f, 0.025f), new Color(0.42f, 0.4f, 0.36f));
+            }
+
+            AddWindow(new Vector3(-8.88f, 1.35f, 4.1f), false);
+            AddWindow(new Vector3(8.88f, 1.35f, 2.8f), false);
+            AddWindow(new Vector3(3.8f, 1.35f, 6.88f), true);
+            AddRug(new Vector3(4.5f, 0.025f, 2.6f), new Vector3(3.3f, 0.03f, 2f), new Color(0.48f, 0.16f, 0.18f));
+            AddRug(new Vector3(4.7f, 0.026f, -4.9f), new Vector3(2.8f, 0.03f, 2.4f), new Color(0.24f, 0.34f, 0.52f));
+
+            AddKitchenDetails();
+            AddBathroomDetails();
+            AddBedroomDetails();
+        }
+
+        private void AddWindow(Vector3 position, bool horizontal)
+        {
+            var glass = new Color(0.45f, 0.68f, 0.82f, 1f);
+            var frame = new Color(0.85f, 0.86f, 0.82f);
+            if (horizontal)
+            {
+                CreateWorldVisual("Window Glass", PrimitiveType.Cube, position, new Vector3(1.6f, 0.82f, 0.035f), glass);
+                CreateWorldVisual("Window Cross", PrimitiveType.Cube, position + Vector3.up * 0.02f, new Vector3(0.05f, 0.86f, 0.045f), frame);
+                CreateWorldVisual("Window Sill", PrimitiveType.Cube, position + Vector3.down * 0.48f, new Vector3(1.9f, 0.08f, 0.18f), frame);
+            }
+            else
+            {
+                CreateWorldVisual("Window Glass", PrimitiveType.Cube, position, new Vector3(0.035f, 0.82f, 1.6f), glass);
+                CreateWorldVisual("Window Cross", PrimitiveType.Cube, position + Vector3.up * 0.02f, new Vector3(0.045f, 0.86f, 0.05f), frame);
+                CreateWorldVisual("Window Sill", PrimitiveType.Cube, position + Vector3.down * 0.48f, new Vector3(0.18f, 0.08f, 1.9f), frame);
+            }
+        }
+
+        private void AddRug(Vector3 position, Vector3 scale, Color color)
+        {
+            CreateWorldVisual("Rug", PrimitiveType.Cube, position, scale, color);
+            CreateWorldVisual("Rug Stripe", PrimitiveType.Cube, position + new Vector3(0f, 0.02f, 0f), new Vector3(scale.x * 0.9f, 0.012f, 0.05f), color * 1.25f);
+        }
+
+        private void AddKitchenDetails()
+        {
+            var cabinet = new Color(0.48f, 0.36f, 0.22f);
+            var counter = new Color(0.62f, 0.62f, 0.58f);
+            CreateWorldVisual("Kitchen Counter", PrimitiveType.Cube, new Vector3(-6.4f, 0.46f, 3.35f), new Vector3(2.6f, 0.68f, 0.65f), cabinet);
+            CreateWorldVisual("Kitchen Counter Top", PrimitiveType.Cube, new Vector3(-6.4f, 0.84f, 3.35f), new Vector3(2.75f, 0.08f, 0.78f), counter);
+            CreateWorldVisual("Upper Cabinet", PrimitiveType.Cube, new Vector3(-6.4f, 1.65f, 6.7f), new Vector3(2.5f, 0.5f, 0.18f), cabinet * 0.9f);
+            CreateWorldVisual("Trash Bin", PrimitiveType.Cylinder, new Vector3(-3.4f, 0.32f, 5.6f), new Vector3(0.38f, 0.58f, 0.38f), new Color(0.18f, 0.22f, 0.22f));
+            CreateWorldVisual("Kitchen Mat", PrimitiveType.Cube, new Vector3(-5.2f, 0.026f, 4.65f), new Vector3(2.2f, 0.03f, 0.75f), new Color(0.2f, 0.42f, 0.35f));
+        }
+
+        private void AddBathroomDetails()
+        {
+            CreateWorldVisual("Toilet Base", PrimitiveType.Cylinder, new Vector3(-4.2f, 0.22f, -5.2f), new Vector3(0.34f, 0.34f, 0.34f), new Color(0.9f, 0.92f, 0.9f));
+            CreateWorldVisual("Toilet Tank", PrimitiveType.Cube, new Vector3(-4.2f, 0.66f, -5.58f), new Vector3(0.72f, 0.42f, 0.18f), new Color(0.9f, 0.92f, 0.9f));
+            CreateWorldVisual("Bathtub", PrimitiveType.Cube, new Vector3(-6.15f, 0.32f, -3.05f), new Vector3(1.9f, 0.55f, 0.82f), new Color(0.86f, 0.9f, 0.92f));
+            CreateWorldVisual("Bath Inner", PrimitiveType.Cube, new Vector3(-6.15f, 0.62f, -3.05f), new Vector3(1.5f, 0.08f, 0.52f), new Color(0.56f, 0.72f, 0.8f));
+            CreateWorldVisual("Mirror", PrimitiveType.Cube, new Vector3(-8.88f, 1.35f, -5.55f), new Vector3(0.035f, 0.78f, 0.7f), new Color(0.58f, 0.72f, 0.78f));
+        }
+
+        private void AddBedroomDetails()
+        {
+            CreateWorldVisual("Wardrobe", PrimitiveType.Cube, new Vector3(8.35f, 0.95f, -3.7f), new Vector3(0.82f, 1.9f, 1.55f), new Color(0.34f, 0.2f, 0.11f));
+            CreateWorldVisual("Wardrobe Handle", PrimitiveType.Cube, new Vector3(7.92f, 0.98f, -3.7f), new Vector3(0.05f, 0.55f, 0.05f), new Color(0.65f, 0.55f, 0.35f));
+            CreateWorldVisual("Night Stand", PrimitiveType.Cube, new Vector3(2.85f, 0.35f, -5.55f), new Vector3(0.72f, 0.7f, 0.62f), new Color(0.32f, 0.18f, 0.1f));
+            CreateWorldVisual("Lamp Shade", PrimitiveType.Cylinder, new Vector3(2.85f, 0.9f, -5.55f), new Vector3(0.25f, 0.28f, 0.25f), new Color(0.88f, 0.78f, 0.48f));
+            CreateWorldVisual("Wall Picture", PrimitiveType.Cube, new Vector3(4.9f, 1.45f, -6.88f), new Vector3(1.2f, 0.72f, 0.035f), new Color(0.62f, 0.52f, 0.38f));
+        }
+
+        private GameObject CreateWorldVisual(string name, PrimitiveType type, Vector3 position, Vector3 scale, Color color, Quaternion? rotation = null)
+        {
+            var gameObject = CreatePrimitive(name, type, position, scale, color);
+            gameObject.transform.localRotation = rotation ?? Quaternion.identity;
+            if (gameObject.TryGetComponent<Collider>(out var collider))
+            {
+                Destroy(collider);
+            }
+
+            return gameObject;
+        }
+
         private GameObject CreateFood(string displayName, Vector3 floorPosition)
         {
             var root = CreatePrimitive($"Food - {displayName}", PrimitiveType.Sphere, floorPosition + Vector3.up * 0.08f, Vector3.one * 0.22f, Color.white);
@@ -523,22 +620,74 @@ namespace IfYouWereCockroach.Prototype
             }
 
             Color color = FoodColor(displayName);
-            if (displayName.Contains("面条") || displayName.Contains("鱼刺"))
+            CreateVisualPrimitive(root.transform, "food_shadow", PrimitiveType.Cylinder, new Vector3(0f, -0.28f, 0f), new Vector3(0.7f, 0.025f, 0.7f), new Color(0.18f, 0.15f, 0.1f, 1f));
+
+            if (displayName.Contains("面条"))
             {
-                CreateVisualPrimitive(root.transform, "food_strip", PrimitiveType.Cube, Vector3.zero, new Vector3(1.15f, 0.18f, 0.18f), color, Quaternion.Euler(0f, 25f, 0f));
-                CreateVisualPrimitive(root.transform, "food_strip_cross", PrimitiveType.Cube, new Vector3(0.05f, 0.02f, 0f), new Vector3(0.85f, 0.12f, 0.12f), color * 0.88f, Quaternion.Euler(0f, -32f, 0f));
+                for (int i = 0; i < 5; i++)
+                {
+                    CreateVisualPrimitive(root.transform, "noodle_strand", PrimitiveType.Cube, new Vector3(UnityEngine.Random.Range(-0.1f, 0.1f), i * 0.035f - 0.05f, UnityEngine.Random.Range(-0.08f, 0.08f)), new Vector3(UnityEngine.Random.Range(0.75f, 1.25f), 0.055f, 0.055f), color, Quaternion.Euler(0f, UnityEngine.Random.Range(-70f, 70f), UnityEngine.Random.Range(-8f, 8f)));
+                }
+            }
+            else if (displayName.Contains("鱼刺"))
+            {
+                CreateVisualPrimitive(root.transform, "fish_bone_spine", PrimitiveType.Cube, Vector3.zero, new Vector3(1.15f, 0.055f, 0.055f), new Color(0.88f, 0.84f, 0.68f), Quaternion.Euler(0f, 25f, 0f));
+                for (int i = -2; i <= 2; i++)
+                {
+                    CreateVisualPrimitive(root.transform, "fish_bone_rib", PrimitiveType.Cube, new Vector3(i * 0.16f, 0.02f, 0f), new Vector3(0.055f, 0.045f, 0.35f), new Color(0.86f, 0.82f, 0.66f), Quaternion.Euler(0f, 25f + i * 8f, 35f));
+                }
             }
             else if (displayName.Contains("米饭") || displayName.Contains("花生"))
             {
-                for (int i = 0; i < 4; i++)
+                int grains = displayName.Contains("米饭") ? 9 : 5;
+                for (int i = 0; i < grains; i++)
                 {
-                    CreateVisualPrimitive(root.transform, "food_grain", PrimitiveType.Sphere, new Vector3(UnityEngine.Random.Range(-0.26f, 0.26f), 0f, UnityEngine.Random.Range(-0.18f, 0.18f)), new Vector3(0.28f, 0.18f, 0.22f), color);
+                    CreateVisualPrimitive(root.transform, "food_grain", PrimitiveType.Sphere, new Vector3(UnityEngine.Random.Range(-0.35f, 0.35f), UnityEngine.Random.Range(-0.03f, 0.08f), UnityEngine.Random.Range(-0.24f, 0.24f)), new Vector3(0.18f, 0.11f, 0.14f), color);
                 }
             }
             else if (displayName.Contains("苹果") || displayName.Contains("果皮"))
             {
                 CreateVisualPrimitive(root.transform, "food_core", PrimitiveType.Sphere, Vector3.zero, new Vector3(0.55f, 0.42f, 0.45f), color);
                 CreateVisualPrimitive(root.transform, "food_peel", PrimitiveType.Cube, new Vector3(0.12f, 0.12f, 0f), new Vector3(0.12f, 0.06f, 0.75f), new Color(0.55f, 0.08f, 0.05f), Quaternion.Euler(0f, 18f, 35f));
+            }
+            else if (displayName.Contains("奶酪"))
+            {
+                CreateVisualPrimitive(root.transform, "cheese_wedge", PrimitiveType.Cube, Vector3.zero, new Vector3(0.72f, 0.32f, 0.48f), color, Quaternion.Euler(0f, 18f, 0f));
+                for (int i = 0; i < 3; i++)
+                {
+                    CreateVisualPrimitive(root.transform, "cheese_hole", PrimitiveType.Sphere, new Vector3(UnityEngine.Random.Range(-0.2f, 0.2f), 0.08f, -0.25f), new Vector3(0.11f, 0.06f, 0.035f), new Color(0.62f, 0.42f, 0.08f));
+                }
+            }
+            else if (displayName.Contains("薯片"))
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    CreateVisualPrimitive(root.transform, "chip", PrimitiveType.Cube, new Vector3(UnityEngine.Random.Range(-0.24f, 0.24f), UnityEngine.Random.Range(-0.02f, 0.08f), UnityEngine.Random.Range(-0.18f, 0.18f)), new Vector3(0.42f, 0.035f, 0.28f), color, Quaternion.Euler(UnityEngine.Random.Range(-12f, 12f), UnityEngine.Random.Range(0f, 180f), UnityEngine.Random.Range(-10f, 10f)));
+                }
+            }
+            else if (displayName.Contains("蛋糕") || displayName.Contains("饼干") || displayName.Contains("面包"))
+            {
+                CreateVisualPrimitive(root.transform, "baked_base", PrimitiveType.Cube, Vector3.zero, new Vector3(0.58f, 0.28f, 0.48f), color, Quaternion.Euler(0f, UnityEngine.Random.Range(-35f, 35f), 0f));
+                CreateVisualPrimitive(root.transform, "cream_or_crust", PrimitiveType.Cube, new Vector3(0f, 0.18f, 0f), new Vector3(0.54f, 0.06f, 0.44f), displayName.Contains("蛋糕") ? new Color(0.92f, 0.86f, 0.74f) : color * 0.72f);
+                for (int i = 0; i < 4; i++)
+                {
+                    CreateVisualPrimitive(root.transform, "crumb_dot", PrimitiveType.Sphere, new Vector3(UnityEngine.Random.Range(-0.34f, 0.34f), UnityEngine.Random.Range(0f, 0.12f), UnityEngine.Random.Range(-0.28f, 0.28f)), new Vector3(0.08f, 0.05f, 0.07f), color * UnityEngine.Random.Range(0.75f, 1.15f));
+                }
+            }
+            else if (displayName.Contains("汤") || displayName.Contains("糖") || displayName.Contains("酱"))
+            {
+                CreateVisualPrimitive(root.transform, "sticky_puddle", PrimitiveType.Cylinder, new Vector3(0f, -0.08f, 0f), new Vector3(0.58f, 0.05f, 0.48f), color);
+                CreateVisualPrimitive(root.transform, "wet_highlight", PrimitiveType.Cylinder, new Vector3(0.1f, -0.035f, -0.06f), new Vector3(0.18f, 0.018f, 0.13f), new Color(1f, 0.82f, 0.45f));
+            }
+            else if (displayName.Contains("肉"))
+            {
+                CreateVisualPrimitive(root.transform, "meat_chunk", PrimitiveType.Sphere, Vector3.zero, new Vector3(0.56f, 0.3f, 0.38f), color);
+                CreateVisualPrimitive(root.transform, "meat_fat", PrimitiveType.Cube, new Vector3(0.04f, 0.08f, -0.22f), new Vector3(0.34f, 0.055f, 0.08f), new Color(0.93f, 0.72f, 0.54f), Quaternion.Euler(0f, 18f, 0f));
+            }
+            else if (displayName.Contains("菜叶"))
+            {
+                CreateVisualPrimitive(root.transform, "leaf_main", PrimitiveType.Cube, Vector3.zero, new Vector3(0.72f, 0.035f, 0.42f), color, Quaternion.Euler(5f, 22f, 8f));
+                CreateVisualPrimitive(root.transform, "leaf_vein", PrimitiveType.Cube, new Vector3(0f, 0.035f, 0f), new Vector3(0.62f, 0.025f, 0.035f), color * 0.65f, Quaternion.Euler(5f, 22f, 8f));
             }
             else
             {
@@ -790,7 +939,7 @@ namespace IfYouWereCockroach.Prototype
                     $"存活时间：{FormatTime(survivalTime)}\n" +
                     $"声音：{Percent(player != null ? player.NoiseLevel : 0f)}  警觉：{Percent(suspicion)}\n" +
                     $"位置状态：{hidden}  种子：{seed}\n" +
-                    "第一视角：WASD 移动 / 鼠标转向 / Shift 疾跑 / E 产卵 / R 重开";
+                    "第一视角：WASD 移动 / 鼠标转向 / Esc 释放鼠标 / E 产卵 / R 重开";
             }
 
             if (tasksText != null)
@@ -873,7 +1022,7 @@ namespace IfYouWereCockroach.Prototype
         private float verticalVelocity;
         private float hideTimer;
         private float detectedSoundCooldown;
-        private float mouseSensitivity = 1.35f;
+        private float mouseSensitivity = 3.2f;
         private int hideContacts;
 
         public float NoiseLevel { get; private set; }
@@ -905,6 +1054,7 @@ namespace IfYouWereCockroach.Prototype
             audioSource.clip = crawlLoopClip;
             audioSource.loop = true;
             audioSource.Play();
+            LockCursor();
         }
 
         private void Update()
@@ -916,6 +1066,16 @@ namespace IfYouWereCockroach.Prototype
                 IsSprinting = false;
                 UpdateCrawlAudio(0f, false);
                 return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
+            else if (Input.GetMouseButtonDown(0))
+            {
+                LockCursor();
             }
 
             float strafeInput = Input.GetAxisRaw("Horizontal");
@@ -1012,6 +1172,12 @@ namespace IfYouWereCockroach.Prototype
             {
                 audioSource.PlayOneShot(clip, volume);
             }
+        }
+
+        private void LockCursor()
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
         }
 
         private void OnTriggerEnter(Collider other)
