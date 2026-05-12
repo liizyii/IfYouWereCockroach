@@ -45,6 +45,7 @@ namespace IfYouWereCockroach.Prototype
         private float eventMessageTimer;
         private float suspicion;
         private AudioSource ambientAudioSource;
+        private AudioSource musicAudioSource;
         private int seed;
         private int familyCount;
         private int targetFoodCount;
@@ -256,6 +257,7 @@ namespace IfYouWereCockroach.Prototype
             CreatePrimitive("Front Wall", PrimitiveType.Cube, new Vector3(0f, 1.2f, -7f), new Vector3(18f, 2.4f, 0.18f), new Color(0.78f, 0.77f, 0.72f));
             CreatePrimitive("Left Wall", PrimitiveType.Cube, new Vector3(-9f, 1.2f, 0f), new Vector3(0.18f, 2.4f, 14f), new Color(0.78f, 0.77f, 0.72f));
             CreatePrimitive("Right Wall", PrimitiveType.Cube, new Vector3(9f, 1.2f, 0f), new Vector3(0.18f, 2.4f, 14f), new Color(0.78f, 0.77f, 0.72f));
+            CreateWorldVisual("Ceiling", PrimitiveType.Cube, new Vector3(0f, 2.42f, 0f), new Vector3(18f, 0.12f, 14f), new Color(0.7f, 0.69f, 0.64f));
             BuildInteriorRooms();
             BuildRoomDetails();
 
@@ -507,11 +509,15 @@ namespace IfYouWereCockroach.Prototype
             {
                 CreatePrimitive("Door Frame Left", PrimitiveType.Cube, position + new Vector3(0f, 0f, -0.68f), new Vector3(0.18f, 2.2f, 0.08f), color);
                 CreatePrimitive("Door Frame Right", PrimitiveType.Cube, position + new Vector3(0f, 0f, 0.68f), new Vector3(0.18f, 2.2f, 0.08f), color);
+                CreateWorldVisual("Open Door Panel", PrimitiveType.Cube, position + new Vector3(0.42f, -0.1f, 0.28f), new Vector3(0.08f, 1.75f, 0.82f), new Color(0.42f, 0.25f, 0.13f), Quaternion.Euler(0f, 32f, 0f));
+                CreateWorldVisual("Door Handle", PrimitiveType.Sphere, position + new Vector3(0.47f, 0.04f, -0.12f), new Vector3(0.08f, 0.08f, 0.08f), new Color(0.75f, 0.62f, 0.35f));
             }
             else
             {
                 CreatePrimitive("Door Frame Left", PrimitiveType.Cube, position + new Vector3(-0.68f, 0f, 0f), new Vector3(0.08f, 2.2f, 0.18f), color);
                 CreatePrimitive("Door Frame Right", PrimitiveType.Cube, position + new Vector3(0.68f, 0f, 0f), new Vector3(0.08f, 2.2f, 0.18f), color);
+                CreateWorldVisual("Open Door Panel", PrimitiveType.Cube, position + new Vector3(0.28f, -0.1f, 0.42f), new Vector3(0.82f, 1.75f, 0.08f), new Color(0.42f, 0.25f, 0.13f), Quaternion.Euler(0f, -32f, 0f));
+                CreateWorldVisual("Door Handle", PrimitiveType.Sphere, position + new Vector3(-0.12f, 0.04f, 0.47f), new Vector3(0.08f, 0.08f, 0.08f), new Color(0.75f, 0.62f, 0.35f));
             }
         }
 
@@ -613,7 +619,7 @@ namespace IfYouWereCockroach.Prototype
 
         private GameObject CreateFood(string displayName, Vector3 floorPosition)
         {
-            var root = CreatePrimitive($"Food - {displayName}", PrimitiveType.Sphere, floorPosition + Vector3.up * 0.08f, Vector3.one * 0.22f, Color.white);
+            var root = CreatePrimitive($"Food - {displayName}", PrimitiveType.Sphere, floorPosition + Vector3.up * 0.12f, Vector3.one * 0.9f, Color.white);
             if (root.TryGetComponent<Renderer>(out var renderer))
             {
                 renderer.enabled = false;
@@ -847,19 +853,43 @@ namespace IfYouWereCockroach.Prototype
             root.localScale = new Vector3(width, height, width);
 
             CreateVisualPrimitive(root, "torso", PrimitiveType.Capsule, new Vector3(0f, 1.05f, 0f), new Vector3(0.28f, 0.44f, 0.22f), shirt);
+            CreateVisualPrimitive(root, "shirt_front", PrimitiveType.Cube, new Vector3(0f, 1.08f, 0.19f), new Vector3(0.34f, 0.48f, 0.035f), shirt * 1.12f);
+            CreateVisualPrimitive(root, "left_shoulder", PrimitiveType.Sphere, new Vector3(-0.24f, 1.25f, 0f), new Vector3(0.11f, 0.1f, 0.1f), shirt);
+            CreateVisualPrimitive(root, "right_shoulder", PrimitiveType.Sphere, new Vector3(0.24f, 1.25f, 0f), new Vector3(0.11f, 0.1f, 0.1f), shirt);
             CreateVisualPrimitive(root, "head", PrimitiveType.Sphere, new Vector3(0f, 1.65f, 0f), new Vector3(0.24f, 0.24f, 0.24f), skin);
             CreateVisualPrimitive(root, "hair", PrimitiveType.Sphere, new Vector3(0f, 1.78f, -0.03f), new Vector3(0.25f, 0.08f, 0.22f), archetype == HumanArchetype.Elder ? Color.gray : new Color(0.06f, 0.04f, 0.03f));
+            if (archetype == HumanArchetype.Woman)
+            {
+                CreateVisualPrimitive(root, "back_hair", PrimitiveType.Capsule, new Vector3(0f, 1.57f, -0.12f), new Vector3(0.18f, 0.18f, 0.12f), new Color(0.07f, 0.045f, 0.03f));
+            }
+
+            CreateVisualPrimitive(root, "left_ear", PrimitiveType.Sphere, new Vector3(-0.22f, 1.64f, 0f), new Vector3(0.04f, 0.06f, 0.035f), skin);
+            CreateVisualPrimitive(root, "right_ear", PrimitiveType.Sphere, new Vector3(0.22f, 1.64f, 0f), new Vector3(0.04f, 0.06f, 0.035f), skin);
             CreateVisualPrimitive(root, "left_eye", PrimitiveType.Sphere, new Vector3(-0.055f, 1.68f, 0.2f), new Vector3(0.028f, 0.028f, 0.018f), Color.black);
             CreateVisualPrimitive(root, "right_eye", PrimitiveType.Sphere, new Vector3(0.055f, 1.68f, 0.2f), new Vector3(0.028f, 0.028f, 0.018f), Color.black);
+            CreateVisualPrimitive(root, "nose", PrimitiveType.Sphere, new Vector3(0f, 1.62f, 0.23f), new Vector3(0.035f, 0.045f, 0.04f), skin * 0.95f);
+            CreateVisualPrimitive(root, "mouth", PrimitiveType.Cube, new Vector3(0f, 1.55f, 0.235f), new Vector3(0.1f, 0.015f, 0.012f), new Color(0.32f, 0.08f, 0.07f));
             CreateVisualPrimitive(root, "left_arm", PrimitiveType.Cube, new Vector3(-0.32f, 1f, 0f), new Vector3(0.08f, 0.72f, 0.08f), skin, Quaternion.Euler(0f, 0f, -8f));
             CreateVisualPrimitive(root, "right_arm", PrimitiveType.Cube, new Vector3(0.32f, 1f, 0f), new Vector3(0.08f, 0.72f, 0.08f), skin, Quaternion.Euler(0f, 0f, 8f));
+            CreateVisualPrimitive(root, "left_hand", PrimitiveType.Sphere, new Vector3(-0.38f, 0.62f, 0f), new Vector3(0.07f, 0.06f, 0.06f), skin);
+            CreateVisualPrimitive(root, "right_hand", PrimitiveType.Sphere, new Vector3(0.38f, 0.62f, 0f), new Vector3(0.07f, 0.06f, 0.06f), skin);
             CreateVisualPrimitive(root, "left_leg", PrimitiveType.Cube, new Vector3(-0.1f, 0.45f, 0f), new Vector3(0.1f, 0.82f, 0.1f), pants);
             CreateVisualPrimitive(root, "right_leg", PrimitiveType.Cube, new Vector3(0.1f, 0.45f, 0f), new Vector3(0.1f, 0.82f, 0.1f), pants);
+            CreateVisualPrimitive(root, "left_knee", PrimitiveType.Sphere, new Vector3(-0.1f, 0.44f, 0.06f), new Vector3(0.07f, 0.055f, 0.055f), pants * 1.2f);
+            CreateVisualPrimitive(root, "right_knee", PrimitiveType.Sphere, new Vector3(0.1f, 0.44f, 0.06f), new Vector3(0.07f, 0.055f, 0.055f), pants * 1.2f);
             CreateVisualPrimitive(root, "left_foot", PrimitiveType.Cube, new Vector3(-0.1f, 0.07f, 0.13f), new Vector3(0.14f, 0.08f, 0.26f), Color.black);
             CreateVisualPrimitive(root, "right_foot", PrimitiveType.Cube, new Vector3(0.1f, 0.07f, 0.13f), new Vector3(0.14f, 0.08f, 0.26f), Color.black);
             if (archetype == HumanArchetype.Woman)
             {
                 CreateVisualPrimitive(root, "skirt_hint", PrimitiveType.Cube, new Vector3(0f, 0.74f, 0f), new Vector3(0.42f, 0.18f, 0.34f), shirt * 0.85f);
+            }
+            else if (archetype == HumanArchetype.Child)
+            {
+                CreateVisualPrimitive(root, "backpack", PrimitiveType.Cube, new Vector3(0f, 1.06f, -0.2f), new Vector3(0.28f, 0.36f, 0.08f), new Color(0.12f, 0.22f, 0.48f));
+            }
+            else if (archetype == HumanArchetype.Elder)
+            {
+                CreateVisualPrimitive(root, "cane", PrimitiveType.Cube, new Vector3(0.45f, 0.56f, 0.12f), new Vector3(0.035f, 0.95f, 0.035f), new Color(0.24f, 0.14f, 0.07f), Quaternion.Euler(0f, 0f, -8f));
             }
 
             return root;
@@ -902,6 +932,13 @@ namespace IfYouWereCockroach.Prototype
             ambientAudioSource.volume = 0.12f;
             ambientAudioSource.clip = ProceduralAudio.CreateHouseAmbience();
             ambientAudioSource.Play();
+
+            musicAudioSource = audioObject.AddComponent<AudioSource>();
+            musicAudioSource.spatialBlend = 0f;
+            musicAudioSource.loop = true;
+            musicAudioSource.volume = 0.035f;
+            musicAudioSource.clip = ProceduralAudio.CreateSoftMusicLoop();
+            musicAudioSource.Play();
         }
 
         private Vector3 RandomFloorPosition()
@@ -1162,8 +1199,8 @@ namespace IfYouWereCockroach.Prototype
             }
 
             float hiddenMultiplier = IsHidden ? 0.35f : 1f;
-            audioSource.volume = movement * hiddenMultiplier * (sprinting ? 0.22f : 0.12f);
-            audioSource.pitch = sprinting ? 1.6f : 1f;
+            audioSource.volume = movement * hiddenMultiplier * (sprinting ? 0.075f : 0.032f);
+            audioSource.pitch = sprinting ? 1.35f : 0.9f;
         }
 
         private void PlayOneShot(AudioClip clip, float volume)
@@ -1199,8 +1236,24 @@ namespace IfYouWereCockroach.Prototype
 
     public sealed class FoodItem : MonoBehaviour
     {
+        private const float CaptureRadius = 0.7f;
+
         public string DisplayName { get; set; }
         public bool Eaten { get; private set; }
+
+        private void Update()
+        {
+            var game = CockroachGameManager.Instance;
+            if (Eaten || game == null || !game.Alive || game.Player == null)
+            {
+                return;
+            }
+
+            if (Vector3.Distance(transform.position, game.Player.transform.position) <= CaptureRadius)
+            {
+                game.EatFood(this);
+            }
+        }
 
         private void OnTriggerEnter(Collider other)
         {
@@ -1279,7 +1332,7 @@ namespace IfYouWereCockroach.Prototype
                     {
                         float envelope = 1f - local / 0.026f;
                         float noise = (float)(random.NextDouble() * 2.0 - 1.0);
-                        tick += noise * envelope * 0.17f;
+                        tick += noise * envelope * 0.07f;
                     }
                 }
 
@@ -1357,16 +1410,16 @@ namespace IfYouWereCockroach.Prototype
             for (int i = 0; i < sampleCount; i++)
             {
                 float t = i / (float)SampleRate;
-                float refrigerator = Mathf.Sin(2f * Mathf.PI * 54f * t) * 0.035f;
+                float refrigerator = Mathf.Sin(2f * Mathf.PI * 54f * t) * 0.02f;
                 float roomTone = Mathf.Sin(2f * Mathf.PI * 116f * t) * 0.012f;
-                float distant = (float)(random.NextDouble() * 2.0 - 1.0) * 0.018f;
+                float distant = (float)(random.NextDouble() * 2.0 - 1.0) * 0.006f;
                 float occasional = 0f;
                 for (float start = 0.6f; start < duration; start += 1.15f)
                 {
                     float local = t - start;
                     if (local >= 0f && local < 0.08f)
                     {
-                        occasional += Mathf.Exp(-local * 28f) * Mathf.Sin(2f * Mathf.PI * 250f * local) * 0.04f;
+                        occasional += Mathf.Exp(-local * 28f) * Mathf.Sin(2f * Mathf.PI * 250f * local) * 0.012f;
                     }
                 }
 
@@ -1374,6 +1427,34 @@ namespace IfYouWereCockroach.Prototype
             }
 
             var clip = AudioClip.Create("House Ambience", sampleCount, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateSoftMusicLoop()
+        {
+            float duration = 8f;
+            int sampleCount = Mathf.CeilToInt(SampleRate * duration);
+            var data = new float[sampleCount];
+            float[] notes = { 220f, 261.63f, 329.63f, 392f };
+
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = i / (float)SampleRate;
+                float value = 0f;
+                for (int n = 0; n < notes.Length; n++)
+                {
+                    float local = Mathf.Repeat(t - n * 1.6f, duration);
+                    float envelope = Mathf.Clamp01(1f - local / 2.4f) * Mathf.Clamp01(local / 0.35f);
+                    value += Mathf.Sin(2f * Mathf.PI * notes[n] * t) * envelope * 0.08f;
+                    value += Mathf.Sin(2f * Mathf.PI * notes[n] * 2f * t) * envelope * 0.018f;
+                }
+
+                float slowPulse = Mathf.Sin(2f * Mathf.PI * 0.18f * t) * 0.015f;
+                data[i] = Mathf.Clamp(value + slowPulse, -0.25f, 0.25f);
+            }
+
+            var clip = AudioClip.Create("Soft Ambient Music", sampleCount, 1, SampleRate, false);
             clip.SetData(data, 0);
             return clip;
         }
@@ -1510,7 +1591,7 @@ namespace IfYouWereCockroach.Prototype
             audioSource.spatialBlend = 1f;
             audioSource.minDistance = 1.2f;
             audioSource.maxDistance = 12f;
-            audioSource.volume = 0.2f;
+            audioSource.volume = 0.08f;
             stepClip = ProceduralAudio.CreateClickBurst("Human Footstep", 0.18f, 170f, 2);
             sitClip = ProceduralAudio.CreateTone("Human Sit Fabric", 0.26f, 95f, 0.35f);
             eatClip = ProceduralAudio.CreateClickBurst("Human Eating", 0.38f, 520f, 6);
@@ -1609,8 +1690,8 @@ namespace IfYouWereCockroach.Prototype
             activitySoundTimer -= Time.deltaTime;
             if (activitySoundTimer <= 0f)
             {
-                activitySoundTimer = speed > 1.5f ? 0.32f : 0.55f;
-                audioSource.PlayOneShot(stepClip, speed > 1.5f ? 0.36f : 0.18f);
+                activitySoundTimer = speed > 1.5f ? 0.48f : 0.82f;
+                audioSource.PlayOneShot(stepClip, speed > 1.5f ? 0.12f : 0.055f);
             }
         }
 
@@ -1769,7 +1850,7 @@ namespace IfYouWereCockroach.Prototype
             audioSource.spatialBlend = 1f;
             audioSource.minDistance = 1f;
             audioSource.maxDistance = 10f;
-            audioSource.volume = 0.22f;
+            audioSource.volume = 0.08f;
             stepClip = ProceduralAudio.CreateClickBurst("Pet Paws", 0.14f, 240f, 3);
             callClip = ProceduralAudio.CreateTone("Pet Call", 0.32f, 360f, 0.15f);
             PickDestination();
@@ -1808,7 +1889,7 @@ namespace IfYouWereCockroach.Prototype
                 if (soundTimer <= 0f && UnityEngine.Random.value < 0.02f)
                 {
                     soundTimer = UnityEngine.Random.Range(3f, 6f);
-                    audioSource.PlayOneShot(callClip, kind == PetKind.Cat ? 0.12f : 0.18f);
+                    audioSource.PlayOneShot(callClip, kind == PetKind.Cat ? 0.045f : 0.065f);
                 }
                 return;
             }
@@ -1840,7 +1921,7 @@ namespace IfYouWereCockroach.Prototype
             if (soundTimer <= 0f)
             {
                 soundTimer = 0.36f;
-                audioSource.PlayOneShot(stepClip, 0.16f);
+                audioSource.PlayOneShot(stepClip, 0.045f);
             }
         }
 
