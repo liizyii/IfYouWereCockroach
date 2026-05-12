@@ -643,7 +643,7 @@ namespace IfYouWereCockroach.Prototype
                     $"存活时间：{FormatTime(survivalTime)}\n" +
                     $"声音：{Percent(player != null ? player.NoiseLevel : 0f)}  警觉：{Percent(suspicion)}\n" +
                     $"位置状态：{hidden}  种子：{seed}\n" +
-                    "第一视角：W/S 前后爬 / A/D 转身 / Shift 疾跑 / E 产卵 / R 重开";
+                    "第一视角：WASD 移动 / 鼠标转向 / Shift 疾跑 / E 产卵 / R 重开";
             }
 
             if (tasksText != null)
@@ -716,10 +716,11 @@ namespace IfYouWereCockroach.Prototype
         private AudioClip eggClip;
         private AudioClip detectedClip;
         private AudioClip deathClip;
-        private float currentForwardSpeed;
+        private Vector3 currentPlanarVelocity;
         private float verticalVelocity;
         private float hideTimer;
         private float detectedSoundCooldown;
+        private float mouseSensitivity = 1.35f;
         private int hideContacts;
 
         public float NoiseLevel { get; private set; }
@@ -764,20 +765,23 @@ namespace IfYouWereCockroach.Prototype
                 return;
             }
 
-            float turnInput = Input.GetAxisRaw("Horizontal");
+            float strafeInput = Input.GetAxisRaw("Horizontal");
             float forwardInput = Input.GetAxisRaw("Vertical");
+            float mouseX = Input.GetAxisRaw("Mouse X");
             IsSprinting = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
             float forwardSpeed = IsSprinting ? 2.15f : 1.05f;
             float backwardSpeed = 0.58f;
+            float strafeSpeed = IsSprinting ? 1.35f : 0.72f;
             float targetForwardSpeed = forwardInput >= 0f ? forwardInput * forwardSpeed : forwardInput * backwardSpeed;
-            float acceleration = Mathf.Abs(targetForwardSpeed) > Mathf.Abs(currentForwardSpeed) ? 3.2f : 4.8f;
-            currentForwardSpeed = Mathf.MoveTowards(currentForwardSpeed, targetForwardSpeed, acceleration * Time.deltaTime);
+            Vector3 targetPlanarVelocity = transform.forward * targetForwardSpeed + transform.right * (strafeInput * strafeSpeed);
+            targetPlanarVelocity = Vector3.ClampMagnitude(targetPlanarVelocity, forwardSpeed);
 
-            float turnRate = Mathf.Lerp(58f, IsSprinting ? 92f : 74f, Mathf.Abs(currentForwardSpeed) / forwardSpeed);
-            transform.Rotate(0f, turnInput * turnRate * Time.deltaTime, 0f);
-            MoveIntensity = Mathf.Clamp01(Mathf.Abs(currentForwardSpeed) / forwardSpeed + Mathf.Abs(turnInput) * 0.16f);
+            float acceleration = targetPlanarVelocity.sqrMagnitude > currentPlanarVelocity.sqrMagnitude ? 3.2f : 4.8f;
+            currentPlanarVelocity = Vector3.MoveTowards(currentPlanarVelocity, targetPlanarVelocity, acceleration * Time.deltaTime);
+            transform.Rotate(0f, mouseX * mouseSensitivity, 0f);
+            MoveIntensity = Mathf.Clamp01(currentPlanarVelocity.magnitude / forwardSpeed);
 
-            Vector3 move = transform.forward * currentForwardSpeed;
+            Vector3 move = currentPlanarVelocity;
             if (characterController.isGrounded && verticalVelocity < 0f)
             {
                 verticalVelocity = -0.2f;
