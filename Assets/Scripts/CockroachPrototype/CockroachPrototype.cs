@@ -41,6 +41,9 @@ namespace IfYouWereCockroach.Prototype
         private Text tasksText;
         private Text leaderboardText;
         private Text eventText;
+        private Text challengeText;
+        private GameObject challengePanel;
+        private GameObject eggHintObject;
         private float survivalTime;
         private float eventMessageTimer;
         private float suspicion;
@@ -51,9 +54,12 @@ namespace IfYouWereCockroach.Prototype
         private int targetFoodCount;
         private int targetEggCount;
         private int eggsLaid;
+        private int challengeLevel;
         private bool alive;
         private bool hasBeenDetected;
         private bool escapedAfterDetection;
+        private bool challengePromptActive;
+        private bool challengeOfferShown;
         private System.Random random;
 
         public static CockroachGameManager Instance { get; private set; }
@@ -62,6 +68,7 @@ namespace IfYouWereCockroach.Prototype
         public CockroachPlayerController Player => player;
         public float Suspicion => suspicion;
         public bool HasBeenDetected => hasBeenDetected;
+        public bool ChallengePromptActive => challengePromptActive;
 
         private void Awake()
         {
@@ -80,6 +87,13 @@ namespace IfYouWereCockroach.Prototype
                 BeginNewRun();
             }
 
+            if (challengePromptActive)
+            {
+                HandleChallengePromptInput();
+                UpdateUi();
+                return;
+            }
+
             if (!alive)
             {
                 return;
@@ -93,11 +107,16 @@ namespace IfYouWereCockroach.Prototype
                 TryLayEgg();
             }
 
+            UpdateEggHint();
             UpdateUi();
+            TryShowChallengePrompt();
         }
 
         public void BeginNewRun()
         {
+            Time.timeScale = 1f;
+            challengePromptActive = false;
+
             var sceneMarker = GameObject.Find("Press Play To Generate Prototype");
             if (sceneMarker != null)
             {
@@ -115,9 +134,11 @@ namespace IfYouWereCockroach.Prototype
             survivalTime = 0f;
             suspicion = 0f;
             eggsLaid = 0;
+            challengeLevel = 0;
             alive = true;
             hasBeenDetected = false;
             escapedAfterDetection = false;
+            challengeOfferShown = false;
             familyCount = random.Next(1, 5);
             targetFoodCount = random.Next(10, 21);
             targetEggCount = random.Next(0, 4);
@@ -128,6 +149,7 @@ namespace IfYouWereCockroach.Prototype
             runRoot = new GameObject("Generated Apartment Run").transform;
             BuildApartment();
             BuildPlayer();
+            BuildEggHint();
             BuildHumans();
             BuildCamera();
             BuildUi();
@@ -214,6 +236,7 @@ namespace IfYouWereCockroach.Prototype
             }
 
             alive = false;
+            CloseChallengePrompt();
             if (player != null)
             {
                 player.PlayDeathSound();
@@ -245,6 +268,7 @@ namespace IfYouWereCockroach.Prototype
             }
 
             eggsLaid += 1;
+            CreateEggCluster(player.transform.position);
             player.AddNoise(0.08f);
             player.PlayEggSound();
             ShowEvent($"产卵成功：{eggsLaid} 次");
@@ -300,9 +324,15 @@ namespace IfYouWereCockroach.Prototype
                 var lightObject = new GameObject("Main Light");
                 light = lightObject.AddComponent<Light>();
                 light.type = LightType.Directional;
-                light.intensity = 1f;
-                light.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
             }
+
+            light.intensity = 1.18f;
+            light.shadows = LightShadows.Soft;
+            light.shadowStrength = 0.68f;
+            light.transform.rotation = Quaternion.Euler(54f, -34f, 0f);
+            QualitySettings.shadows = ShadowQuality.All;
+            QualitySettings.shadowDistance = 24f;
+            RenderSettings.ambientIntensity = 0.72f;
 
             BuildAmbientAudio();
         }
@@ -411,6 +441,12 @@ namespace IfYouWereCockroach.Prototype
             follow.Target = player.transform;
         }
 
+        private void BuildEggHint()
+        {
+            eggHintObject = CreateWorldVisual("Egg Ready Indicator", PrimitiveType.Cylinder, Vector3.zero, new Vector3(0.7f, 0.018f, 0.7f), new Color(0.24f, 0.95f, 0.42f));
+            eggHintObject.SetActive(false);
+        }
+
         private void BuildUi()
         {
             var existingCanvas = FindObjectOfType<Canvas>();
@@ -422,19 +458,61 @@ namespace IfYouWereCockroach.Prototype
             var canvasObject = new GameObject("Prototype HUD");
             var canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvasObject.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            var scaler = canvasObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1600f, 900f);
+            scaler.matchWidthOrHeight = 0.5f;
             canvasObject.AddComponent<GraphicRaycaster>();
 
-            statusText = CreateText(canvasObject.transform, "Status", new Vector2(18f, -18f), TextAnchor.UpperLeft, 18, new Vector2(520f, 116f));
-            tasksText = CreateText(canvasObject.transform, "Tasks", new Vector2(18f, -132f), TextAnchor.UpperLeft, 17, new Vector2(560f, 180f));
-            leaderboardText = CreateText(canvasObject.transform, "Leaderboard", new Vector2(-18f, -18f), TextAnchor.UpperRight, 17, new Vector2(360f, 180f));
+            var statusPanel = CreatePanel(canvasObject.transform, "Status Panel", new Vector2(14f, -14f), TextAnchor.UpperLeft, new Vector2(430f, 132f), new Color(0f, 0f, 0f, 0.58f));
+            var tasksPanel = CreatePanel(canvasObject.transform, "Tasks Panel", new Vector2(14f, -156f), TextAnchor.UpperLeft, new Vector2(430f, 214f), new Color(0f, 0f, 0f, 0.54f));
+            var boardPanel = CreatePanel(canvasObject.transform, "Leaderboard Panel", new Vector2(-14f, -14f), TextAnchor.UpperRight, new Vector2(300f, 148f), new Color(0f, 0f, 0f, 0.42f));
+
+            statusText = CreateText(statusPanel.transform, "Status", new Vector2(12f, -10f), TextAnchor.UpperLeft, 15, new Vector2(406f, 110f));
+            tasksText = CreateText(tasksPanel.transform, "Tasks", new Vector2(12f, -10f), TextAnchor.UpperLeft, 15, new Vector2(406f, 190f));
+            leaderboardText = CreateText(boardPanel.transform, "Leaderboard", new Vector2(-12f, -10f), TextAnchor.UpperRight, 14, new Vector2(276f, 126f));
             eventText = CreateText(canvasObject.transform, "Event", new Vector2(0f, 52f), TextAnchor.LowerCenter, 19, new Vector2(900f, 72f));
+            challengePanel = CreatePanel(canvasObject.transform, "Challenge Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(560f, 260f), new Color(0f, 0f, 0f, 0.78f)).gameObject;
+            challengeText = CreateText(challengePanel.transform, "Challenge Text", new Vector2(0f, 0f), TextAnchor.MiddleCenter, 20, new Vector2(520f, 220f));
+            challengePanel.SetActive(false);
+        }
+
+        private Image CreatePanel(Transform parent, string name, Vector2 anchoredPosition, TextAnchor anchor, Vector2 size, Color color)
+        {
+            var panelObject = new GameObject(name);
+            panelObject.transform.SetParent(parent, false);
+            var rect = panelObject.AddComponent<RectTransform>();
+            rect.sizeDelta = size;
+
+            if (anchor == TextAnchor.UpperRight)
+            {
+                rect.anchorMin = new Vector2(1f, 1f);
+                rect.anchorMax = new Vector2(1f, 1f);
+                rect.pivot = new Vector2(1f, 1f);
+            }
+            else if (anchor == TextAnchor.MiddleCenter)
+            {
+                rect.anchorMin = new Vector2(0.5f, 0.5f);
+                rect.anchorMax = new Vector2(0.5f, 0.5f);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+            }
+            else
+            {
+                rect.anchorMin = new Vector2(0f, 1f);
+                rect.anchorMax = new Vector2(0f, 1f);
+                rect.pivot = new Vector2(0f, 1f);
+            }
+
+            rect.anchoredPosition = anchoredPosition;
+            var image = panelObject.AddComponent<Image>();
+            image.color = color;
+            return image;
         }
 
         private Text CreateText(Transform parent, string name, Vector2 anchoredPosition, TextAnchor anchor, int fontSize, Vector2 size)
         {
             var textObject = new GameObject(name);
-            textObject.transform.SetParent(parent);
+            textObject.transform.SetParent(parent, false);
             var rect = textObject.AddComponent<RectTransform>();
             rect.sizeDelta = size;
 
@@ -450,6 +528,12 @@ namespace IfYouWereCockroach.Prototype
                 rect.anchorMax = new Vector2(0.5f, 0f);
                 rect.pivot = new Vector2(0.5f, 0f);
             }
+            else if (anchor == TextAnchor.MiddleCenter)
+            {
+                rect.anchorMin = new Vector2(0.5f, 0.5f);
+                rect.anchorMax = new Vector2(0.5f, 0.5f);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+            }
             else
             {
                 rect.anchorMin = new Vector2(0f, 1f);
@@ -461,10 +545,11 @@ namespace IfYouWereCockroach.Prototype
             var text = textObject.AddComponent<Text>();
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
             text.fontSize = fontSize;
+            text.lineSpacing = 0.92f;
             text.alignment = anchor;
             text.color = Color.white;
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
-            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
             return text;
         }
 
@@ -479,6 +564,8 @@ namespace IfYouWereCockroach.Prototype
             var renderer = gameObject.GetComponent<Renderer>();
             renderer.material = new Material(Shader.Find("Standard"));
             renderer.material.color = color;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            renderer.receiveShadows = true;
             return gameObject;
         }
 
@@ -736,12 +823,15 @@ namespace IfYouWereCockroach.Prototype
             var renderer = gameObject.GetComponent<Renderer>();
             renderer.material = new Material(Shader.Find("Standard"));
             renderer.material.color = color;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            renderer.receiveShadows = true;
             return gameObject;
         }
 
         private void AddFurniture(string name, Vector3 position, Vector3 scale, Color color, bool createsHideSpot, string modelResourcePath = null)
         {
             var furniture = CreatePrimitive(name, PrimitiveType.Cube, position, scale, color);
+            AddFurnitureFloorShadow(name, position, scale);
             AddFurnitureVisual(furniture.transform, name, color);
 
             if (!createsHideSpot)
@@ -763,6 +853,12 @@ namespace IfYouWereCockroach.Prototype
             box.isTrigger = true;
             var hideSpot = hideObject.AddComponent<HideSpot>();
             RegisterHideSpot(hideSpot);
+        }
+
+        private void AddFurnitureFloorShadow(string name, Vector3 position, Vector3 scale)
+        {
+            var shadowScale = new Vector3(Mathf.Max(0.7f, scale.x * 1.05f), 0.018f, Mathf.Max(0.55f, scale.z * 1.05f));
+            CreateWorldVisual($"{name} Ground Shadow", PrimitiveType.Cylinder, new Vector3(position.x, 0.018f, position.z), shadowScale, new Color(0.08f, 0.07f, 0.055f));
         }
 
         private void AddFurnitureVisual(Transform parent, string name, Color baseColor)
@@ -1005,6 +1101,109 @@ namespace IfYouWereCockroach.Prototype
             }
         }
 
+        private void UpdateEggHint()
+        {
+            if (eggHintObject == null || player == null)
+            {
+                return;
+            }
+
+            int availableEggs = foodItems.Count(food => food.Eaten) / 5 - eggsLaid;
+            bool show = alive && player.IsHidden && availableEggs > 0;
+            eggHintObject.SetActive(show);
+            if (show)
+            {
+                eggHintObject.transform.position = player.transform.position + Vector3.up * 0.018f;
+                float pulse = 0.72f + Mathf.Sin(Time.time * 5f) * 0.08f;
+                eggHintObject.transform.localScale = new Vector3(pulse, 0.018f, pulse);
+            }
+        }
+
+        private void CreateEggCluster(Vector3 position)
+        {
+            var root = new GameObject("Egg Cluster").transform;
+            root.SetParent(runRoot);
+            root.position = position + Vector3.up * 0.045f;
+
+            CreateVisualPrimitive(root, "egg_glow", PrimitiveType.Cylinder, Vector3.down * 0.035f, new Vector3(0.42f, 0.012f, 0.42f), new Color(0.32f, 0.85f, 0.38f));
+            for (int i = 0; i < 5; i++)
+            {
+                float angle = i * 72f * Mathf.Deg2Rad;
+                var offset = new Vector3(Mathf.Cos(angle) * 0.09f, 0f, Mathf.Sin(angle) * 0.06f);
+                CreateVisualPrimitive(root, "egg", PrimitiveType.Sphere, offset + Vector3.up * 0.025f, new Vector3(0.07f, 0.095f, 0.07f), new Color(0.94f, 0.88f, 0.68f));
+            }
+        }
+
+        private void TryShowChallengePrompt()
+        {
+            if (challengeOfferShown || challengePromptActive || !alive || !AllTasksComplete())
+            {
+                return;
+            }
+
+            challengeOfferShown = true;
+            challengePromptActive = true;
+            Time.timeScale = 0f;
+            if (challengePanel != null)
+            {
+                challengePanel.SetActive(true);
+            }
+
+            if (challengeText != null)
+            {
+                challengeText.text =
+                    "本轮目标已完成\n\n" +
+                    $"你已经存活 {FormatTime(survivalTime)}\n" +
+                    "是否挑战更难任务？\n\n" +
+                    "Enter / 空格：提高难度继续\n" +
+                    "Backspace：只继续存活\n" +
+                    "R：重新开局";
+            }
+        }
+
+        private void HandleChallengePromptInput()
+        {
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Space))
+            {
+                AcceptHarderChallenge();
+            }
+            else if (Input.GetKeyDown(KeyCode.Backspace) || Input.GetKeyDown(KeyCode.Escape))
+            {
+                CloseChallengePrompt();
+                ShowEvent("继续存活挑战，当前任务不再弹窗");
+            }
+        }
+
+        private void AcceptHarderChallenge()
+        {
+            int eaten = foodItems.Count(food => food.Eaten);
+            challengeLevel += 1;
+            targetFoodCount = Mathf.Max(targetFoodCount + 5 + challengeLevel * 2, eaten + 4);
+            targetEggCount = Mathf.Max(targetEggCount + 1, eggsLaid + 1);
+            escapedAfterDetection = false;
+            hasBeenDetected = false;
+            challengeOfferShown = false;
+            CloseChallengePrompt();
+            ShowEvent($"难度提升：第 {challengeLevel + 1} 阶段，目标食物 {targetFoodCount} 种，产卵 {targetEggCount} 次");
+        }
+
+        private void CloseChallengePrompt()
+        {
+            challengePromptActive = false;
+            Time.timeScale = 1f;
+            if (challengePanel != null)
+            {
+                challengePanel.SetActive(false);
+            }
+        }
+
+        private bool AllTasksComplete()
+        {
+            int eaten = foodItems.Count(food => food.Eaten);
+            bool eggComplete = targetEggCount <= 0 || eggsLaid >= targetEggCount;
+            return eaten >= targetFoodCount && eggComplete && escapedAfterDetection && alive;
+        }
+
         private void UpdateUi()
         {
             if (eventText != null && eventMessageTimer > 0f)
@@ -1017,30 +1216,34 @@ namespace IfYouWereCockroach.Prototype
             }
 
             int eaten = foodItems.Count(food => food.Eaten);
+            int availableEggs = foodItems.Count(food => food.Eaten) / 5 - eggsLaid;
             if (statusText != null)
             {
                 string state = alive ? "存活中" : "已死亡";
                 string hidden = player != null && player.IsHidden ? "隐藏" : "暴露";
+                string eggState = availableEggs > 0
+                    ? (player != null && player.IsHidden ? "可按 E" : "找家具阴影")
+                    : "需再吃食物";
                 statusText.text =
                     $"状态：{state}\n" +
                     $"存活时间：{FormatTime(survivalTime)}\n" +
                     $"声音：{Percent(player != null ? player.NoiseLevel : 0f)}  警觉：{Percent(suspicion)}\n" +
-                    $"位置状态：{hidden}  种子：{seed}\n" +
-                    "第一视角：WASD 移动 / 鼠标转向 / Esc 释放鼠标 / E 产卵 / R 重开";
+                    $"位置：{hidden}  产卵：{eggState}\n" +
+                    "操作：WASD / 鼠标 / E产卵 / R重开";
             }
 
             if (tasksText != null)
             {
-                int availableEggs = foodItems.Count(food => food.Eaten) / 5 - eggsLaid;
                 string eggTask = targetEggCount <= 0
                     ? TaskLine(true, "本局没有强制产卵目标")
                     : TaskLine(eggsLaid >= targetEggCount, $"产卵目标：{eggsLaid}/{targetEggCount}");
 
                 tasksText.text =
-                    "本局小任务\n" +
+                    $"本局小任务  阶段 {challengeLevel + 1}\n" +
                     TaskLine(eaten >= targetFoodCount, $"吃到 {targetFoodCount} 种食物：{eaten}/{targetFoodCount}") +
                     eggTask +
-                    $"产卵机会：{Mathf.Max(0, availableEggs)} 次\n" +
+                    $"可产卵机会：{Mathf.Max(0, availableEggs)} 次\n" +
+                    "提示：隐藏时绿色圈=可产卵\n" +
                     TaskLine(escapedAfterDetection, "被发现后成功逃脱一次") +
                     TaskLine(alive, "核心目标：尽可能活得更久");
             }
@@ -1148,6 +1351,14 @@ namespace IfYouWereCockroach.Prototype
         {
             detectedSoundCooldown -= Time.deltaTime;
             if (CockroachGameManager.Instance == null || !CockroachGameManager.Instance.Alive)
+            {
+                MoveIntensity = 0f;
+                IsSprinting = false;
+                UpdateCrawlAudio(0f, false);
+                return;
+            }
+
+            if (CockroachGameManager.Instance.ChallengePromptActive)
             {
                 MoveIntensity = 0f;
                 IsSprinting = false;
