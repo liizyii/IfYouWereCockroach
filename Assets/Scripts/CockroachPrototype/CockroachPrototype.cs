@@ -466,16 +466,16 @@ namespace IfYouWereCockroach.Prototype
             scaler.matchWidthOrHeight = 0.5f;
             canvasObject.AddComponent<GraphicRaycaster>();
 
-            var statusPanel = CreatePanel(canvasObject.transform, "Status Panel", new Vector2(16f, -16f), TextAnchor.UpperLeft, new Vector2(540f, 162f), new Color(0f, 0f, 0f, 0.62f));
-            var tasksPanel = CreatePanel(canvasObject.transform, "Tasks Panel", new Vector2(16f, -190f), TextAnchor.UpperLeft, new Vector2(540f, 254f), new Color(0f, 0f, 0f, 0.58f));
-            var boardPanel = CreatePanel(canvasObject.transform, "Leaderboard Panel", new Vector2(-16f, -16f), TextAnchor.UpperRight, new Vector2(330f, 164f), new Color(0f, 0f, 0f, 0.46f));
+            var statusPanel = CreatePanel(canvasObject.transform, "Status Panel", new Vector2(18f, -18f), TextAnchor.UpperLeft, new Vector2(700f, 230f), new Color(0f, 0f, 0f, 0.68f));
+            var tasksPanel = CreatePanel(canvasObject.transform, "Tasks Panel", new Vector2(18f, -270f), TextAnchor.UpperLeft, new Vector2(700f, 360f), new Color(0f, 0f, 0f, 0.64f));
+            var boardPanel = CreatePanel(canvasObject.transform, "Leaderboard Panel", new Vector2(-18f, -18f), TextAnchor.UpperRight, new Vector2(390f, 210f), new Color(0f, 0f, 0f, 0.52f));
 
-            statusText = CreateText(statusPanel.transform, "Status", new Vector2(14f, -12f), TextAnchor.UpperLeft, 19, new Vector2(512f, 136f));
-            tasksText = CreateText(tasksPanel.transform, "Tasks", new Vector2(14f, -12f), TextAnchor.UpperLeft, 18, new Vector2(512f, 228f));
-            leaderboardText = CreateText(boardPanel.transform, "Leaderboard", new Vector2(-14f, -12f), TextAnchor.UpperRight, 16, new Vector2(302f, 138f));
-            eventText = CreateText(canvasObject.transform, "Event", new Vector2(0f, 54f), TextAnchor.LowerCenter, 22, new Vector2(980f, 78f));
-            challengePanel = CreatePanel(canvasObject.transform, "Challenge Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(620f, 300f), new Color(0f, 0f, 0f, 0.8f)).gameObject;
-            challengeText = CreateText(challengePanel.transform, "Challenge Text", new Vector2(0f, 0f), TextAnchor.MiddleCenter, 23, new Vector2(580f, 256f));
+            statusText = CreateText(statusPanel.transform, "Status", new Vector2(18f, -16f), TextAnchor.UpperLeft, 28, new Vector2(664f, 196f));
+            tasksText = CreateText(tasksPanel.transform, "Tasks", new Vector2(18f, -16f), TextAnchor.UpperLeft, 26, new Vector2(664f, 328f));
+            leaderboardText = CreateText(boardPanel.transform, "Leaderboard", new Vector2(-18f, -16f), TextAnchor.UpperRight, 22, new Vector2(354f, 178f));
+            eventText = CreateText(canvasObject.transform, "Event", new Vector2(0f, 56f), TextAnchor.LowerCenter, 30, new Vector2(1100f, 90f));
+            challengePanel = CreatePanel(canvasObject.transform, "Challenge Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(760f, 360f), new Color(0f, 0f, 0f, 0.82f)).gameObject;
+            challengeText = CreateText(challengePanel.transform, "Challenge Text", new Vector2(0f, 0f), TextAnchor.MiddleCenter, 28, new Vector2(700f, 310f));
             challengePanel.SetActive(false);
         }
 
@@ -547,11 +547,15 @@ namespace IfYouWereCockroach.Prototype
             var text = textObject.AddComponent<Text>();
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
             text.fontSize = fontSize;
-            text.lineSpacing = 0.92f;
+            text.fontStyle = FontStyle.Bold;
+            text.lineSpacing = 1.02f;
             text.alignment = anchor;
             text.color = Color.white;
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
             text.verticalOverflow = VerticalWrapMode.Truncate;
+            var outline = textObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.88f);
+            outline.effectDistance = new Vector2(2f, -2f);
             return text;
         }
 
@@ -847,18 +851,19 @@ namespace IfYouWereCockroach.Prototype
 
             if (furniture.TryGetComponent<BoxCollider>(out var furnitureCollider))
             {
-                furnitureCollider.center = new Vector3(0f, 0.35f, 0f);
-                furnitureCollider.size = new Vector3(1f, 0.3f, 1f);
+                furnitureCollider.center = new Vector3(0f, 0.56f, 0f);
+                furnitureCollider.size = new Vector3(0.92f, 0.18f, 0.92f);
             }
 
             var hideObject = new GameObject($"Hide Spot - {name}");
             hideObject.transform.SetParent(runRoot);
-            hideObject.transform.position = new Vector3(position.x, 0.12f, position.z);
-            hideObject.transform.localScale = new Vector3(Mathf.Max(0.7f, scale.x * 0.9f), 0.22f, Mathf.Max(0.7f, scale.z * 0.9f));
+            hideObject.transform.position = new Vector3(position.x, 0.2f, position.z);
+            hideObject.transform.localScale = new Vector3(Mathf.Max(1.0f, scale.x * 1.2f), 0.48f, Mathf.Max(1.0f, scale.z * 1.2f));
             var box = hideObject.AddComponent<BoxCollider>();
             box.isTrigger = true;
             var hideSpot = hideObject.AddComponent<HideSpot>();
             RegisterHideSpot(hideSpot);
+            AddHideAreaVisual(name, position, scale);
         }
 
         private bool TryAttachFurnitureModel(Transform parent, string modelResourcePath)
@@ -904,8 +909,14 @@ namespace IfYouWereCockroach.Prototype
 
         private void AddFurnitureFloorShadow(string name, Vector3 position, Vector3 scale)
         {
-            var shadowScale = new Vector3(Mathf.Max(0.7f, scale.x * 1.05f), 0.018f, Mathf.Max(0.55f, scale.z * 1.05f));
-            CreateWorldVisual($"{name} Ground Shadow", PrimitiveType.Cylinder, new Vector3(position.x, 0.018f, position.z), shadowScale, new Color(0.08f, 0.07f, 0.055f));
+            var shadowScale = new Vector3(Mathf.Max(0.8f, scale.x * 1.15f), 0.02f, Mathf.Max(0.7f, scale.z * 1.15f));
+            CreateWorldVisual($"{name} Ground Shadow", PrimitiveType.Cylinder, new Vector3(position.x, 0.018f, position.z), shadowScale, new Color(0.025f, 0.02f, 0.016f));
+        }
+
+        private void AddHideAreaVisual(string name, Vector3 position, Vector3 scale)
+        {
+            var hideScale = new Vector3(Mathf.Max(0.95f, scale.x * 1.25f), 0.014f, Mathf.Max(0.95f, scale.z * 1.25f));
+            CreateWorldVisual($"{name} Crawlable Dark Area", PrimitiveType.Cylinder, new Vector3(position.x, 0.035f, position.z), hideScale, new Color(0.02f, 0.035f, 0.024f));
         }
 
         private void AddFurnitureVisual(Transform parent, string name, Color baseColor)
@@ -1049,6 +1060,7 @@ namespace IfYouWereCockroach.Prototype
                 visual.transform.localRotation = Quaternion.identity;
                 visual.transform.localScale = Vector3.one;
                 PrepareImportedModel(visual);
+                AddHumanClothingOverlay(root, archetype, variant);
 
                 if (archetype == HumanArchetype.Woman)
                 {
@@ -1115,6 +1127,27 @@ namespace IfYouWereCockroach.Prototype
             }
 
             return root;
+        }
+
+        private void AddHumanClothingOverlay(Transform root, HumanArchetype archetype, int variant)
+        {
+            var shirtColors = new[] { new Color(0.12f, 0.32f, 0.58f), new Color(0.62f, 0.16f, 0.14f), new Color(0.18f, 0.46f, 0.24f), new Color(0.42f, 0.24f, 0.58f) };
+            var shirt = shirtColors[variant % shirtColors.Length];
+            var pants = new Color(0.05f, 0.08f, 0.12f);
+
+            CreateVisualPrimitive(root, "visible_shirt", PrimitiveType.Cube, new Vector3(0f, 1.04f, 0.02f), new Vector3(0.42f, 0.5f, 0.26f), shirt);
+            CreateVisualPrimitive(root, "shirt_front_panel", PrimitiveType.Cube, new Vector3(0f, 1.07f, 0.2f), new Vector3(0.44f, 0.48f, 0.035f), shirt * 1.15f);
+            CreateVisualPrimitive(root, "left_sleeve", PrimitiveType.Cube, new Vector3(-0.31f, 1.12f, 0.02f), new Vector3(0.12f, 0.34f, 0.14f), shirt * 0.9f);
+            CreateVisualPrimitive(root, "right_sleeve", PrimitiveType.Cube, new Vector3(0.31f, 1.12f, 0.02f), new Vector3(0.12f, 0.34f, 0.14f), shirt * 0.9f);
+            CreateVisualPrimitive(root, "left_pants", PrimitiveType.Cube, new Vector3(-0.11f, 0.48f, 0f), new Vector3(0.13f, 0.76f, 0.13f), pants);
+            CreateVisualPrimitive(root, "right_pants", PrimitiveType.Cube, new Vector3(0.11f, 0.48f, 0f), new Vector3(0.13f, 0.76f, 0.13f), pants);
+            CreateVisualPrimitive(root, "left_shoe_overlay", PrimitiveType.Cube, new Vector3(-0.11f, 0.08f, 0.14f), new Vector3(0.16f, 0.08f, 0.28f), Color.black);
+            CreateVisualPrimitive(root, "right_shoe_overlay", PrimitiveType.Cube, new Vector3(0.11f, 0.08f, 0.14f), new Vector3(0.16f, 0.08f, 0.28f), Color.black);
+
+            if (archetype == HumanArchetype.Woman)
+            {
+                CreateVisualPrimitive(root, "skirt_overlay", PrimitiveType.Cube, new Vector3(0f, 0.72f, 0.02f), new Vector3(0.5f, 0.22f, 0.34f), shirt * 0.75f);
+            }
         }
 
         private void BuildPet(PetKind kind)
@@ -1366,9 +1399,9 @@ namespace IfYouWereCockroach.Prototype
                 statusText.text =
                     $"状态：{state}\n" +
                     $"存活时间：{FormatTime(survivalTime)}\n" +
-                    $"声音：{Percent(player != null ? player.NoiseLevel : 0f)}  警觉：{Percent(suspicion)}\n" +
+                    $"声音 {Percent(player != null ? player.NoiseLevel : 0f)}  警觉 {Percent(suspicion)}\n" +
                     $"位置：{hidden}  产卵：{eggState}\n" +
-                    "操作：WASD / 鼠标 / E产卵 / R重开";
+                    "WASD移动  鼠标转向  E产卵";
             }
 
             if (tasksText != null)
@@ -2144,9 +2177,8 @@ namespace IfYouWereCockroach.Prototype
         private HumanActivity RandomIdleActivity()
         {
             float roll = UnityEngine.Random.value;
-            if (roll < 0.28f) return HumanActivity.Sitting;
-            if (roll < 0.48f) return HumanActivity.Eating;
-            if (roll < 0.62f && archetype != HumanArchetype.Child) return HumanActivity.Lying;
+            if (roll < 0.24f) return HumanActivity.Sitting;
+            if (roll < 0.46f) return HumanActivity.Eating;
             return HumanActivity.Standing;
         }
 
