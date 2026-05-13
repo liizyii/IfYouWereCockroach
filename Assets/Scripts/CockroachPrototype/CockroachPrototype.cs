@@ -25,6 +25,7 @@ namespace IfYouWereCockroach.Prototype
     public sealed class CockroachGameManager : MonoBehaviour
     {
         private const string LeaderboardKey = "IfYouWereCockroach.LocalLeaderboard";
+        private static readonly Quaternion ImportedModelUprightRotation = Quaternion.Euler(-90f, 0f, 0f);
 
         private readonly List<FoodItem> foodItems = new List<FoodItem>();
         private readonly List<HumanController> humans = new List<HumanController>();
@@ -955,7 +956,7 @@ namespace IfYouWereCockroach.Prototype
             var visual = Instantiate(model, parent);
             visual.name = $"{parent.name} Model";
             visual.transform.localPosition = new Vector3(0f, -0.5f, 0f);
-            visual.transform.localRotation = Quaternion.identity;
+            visual.transform.localRotation = ImportedModelUprightRotation;
             visual.transform.localScale = Vector3.one;
             PrepareImportedModel(visual);
             return true;
@@ -1125,7 +1126,7 @@ namespace IfYouWereCockroach.Prototype
                 var visual = Instantiate(humanModel, root);
                 visual.name = $"{archetype} Model";
                 visual.transform.localPosition = Vector3.zero;
-                visual.transform.localRotation = Quaternion.identity;
+                visual.transform.localRotation = ImportedModelUprightRotation;
                 visual.transform.localScale = Vector3.one;
                 PrepareImportedModel(visual);
                 AddHumanClothingOverlay(root, archetype, variant);
