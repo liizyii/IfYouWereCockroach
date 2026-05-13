@@ -232,6 +232,32 @@ def build_sink(mats):
     return r
 
 
+def build_kitchen_counter(mats):
+    r = root("KitchenCounter_LowPoly")
+    cube("cabinet_body", (0, 0, 0.38), (0.6, 0.28, 0.38), mats["wood"], r)
+    cube("stone_countertop", (0, 0, 0.79), (0.66, 0.34, 0.055), mats["counter_stone"], r)
+    cube("backsplash", (0, 0.29, 0.98), (0.66, 0.035, 0.19), mats["tile_warm"], r)
+    for x in (-0.32, 0, 0.32):
+        cube("tile_seam_vertical", (x, 0.267, 0.98), (0.006, 0.008, 0.17), mats["tile_grout"], r)
+    for z in (0.92, 1.02):
+        cube("tile_seam_horizontal", (0, 0.266, z), (0.62, 0.008, 0.006), mats["tile_grout"], r)
+    for x in (-0.36, 0, 0.36):
+        cube("lower_door", (x, -0.292, 0.36), (0.18, 0.016, 0.28), mats["wood_dark"], r)
+        cube("door_handle", (x + 0.055, -0.314, 0.39), (0.018, 0.018, 0.12), mats["metal"], r)
+    for x in (-0.18, 0.18):
+        cube("drawer_front", (x, -0.294, 0.66), (0.28, 0.018, 0.1), mats["wood_dark"], r)
+        cube("drawer_handle", (x, -0.318, 0.66), (0.12, 0.018, 0.014), mats["metal"], r)
+    cylinder("cutting_board", (-0.24, -0.1, 0.86), 0.13, 0.018, mats["cutting_board"], r, 28)
+    cube("knife_blade", (-0.16, -0.1, 0.885), (0.12, 0.018, 0.008), mats["metal"], r)
+    cube("knife_handle", (-0.29, -0.1, 0.885), (0.055, 0.022, 0.012), mats["black"], r)
+    cylinder("sauce_stain", (0.2, -0.02, 0.86), 0.075, 0.008, mats["stain_red"], r, 24)
+    for i, x in enumerate((-0.02, 0.04, 0.11, 0.28)):
+        sphere("crumb", (x, -0.14 + i * 0.035, 0.875), (0.025, 0.018, 0.012), mats["crumb"], r, 8, 4)
+    cylinder("small_pan", (0.36, 0.08, 0.87), 0.12, 0.035, mats["black"], r, 24)
+    cube("pan_handle", (0.52, 0.08, 0.87), (0.14, 0.025, 0.018), mats["black"], r)
+    return r
+
+
 def build_clutter(mats):
     r = root("Clutter_LowPoly")
     cube("box", (-0.12, 0.02, 0.22), (0.24, 0.2, 0.22), mats["cardboard"], r)
@@ -351,6 +377,9 @@ def main():
         "porcelain": material("Porcelain", (0.92, 0.94, 0.9, 1)),
         "metal": material("Metal", (0.55, 0.58, 0.57, 1)),
         "metal_dark": material("Dark Metal", (0.24, 0.25, 0.25, 1)),
+        "counter_stone": material("Speckled Counter Stone", (0.58, 0.57, 0.53, 1)),
+        "tile_warm": material("Warm Kitchen Tile", (0.73, 0.69, 0.6, 1)),
+        "tile_grout": material("Tile Grout", (0.36, 0.35, 0.32, 1)),
         "dark": material("Dark Appliance", (0.08, 0.085, 0.09, 1)),
         "black": material("Black", (0.005, 0.005, 0.005, 1)),
         "seal": material("Rubber Seal", (0.02, 0.025, 0.025, 1)),
@@ -372,6 +401,9 @@ def main():
         "pillow": material("Pillow", (0.88, 0.86, 0.78, 1)),
         "cardboard": material("Cardboard", (0.54, 0.39, 0.23, 1)),
         "cloth": material("Cloth", (0.52, 0.23, 0.27, 1)),
+        "cutting_board": material("Cutting Board", (0.62, 0.38, 0.18, 1)),
+        "stain_red": material("Food Stain", (0.5, 0.07, 0.035, 1)),
+        "crumb": material("Food Crumb", (0.78, 0.52, 0.25, 1)),
         "paper": material("Paper", (0.9, 0.82, 0.58, 1)),
         "paper_white": material("White Paper", (0.9, 0.88, 0.78, 1)),
         "red": material("Red Accent", (0.62, 0.11, 0.09, 1)),
@@ -401,6 +433,7 @@ def main():
         "CoffeeTable_LowPoly.fbx": build_coffee_table(mats),
         "Bed_LowPoly.fbx": build_bed(mats),
         "Sink_LowPoly.fbx": build_sink(mats),
+        "KitchenCounter_LowPoly.fbx": build_kitchen_counter(mats),
         "Clutter_LowPoly.fbx": build_clutter(mats),
         "Bookshelf_LowPoly.fbx": build_bookshelf(mats),
         "Wardrobe_LowPoly.fbx": build_wardrobe(mats),

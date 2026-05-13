@@ -781,9 +781,7 @@ namespace IfYouWereCockroach.Prototype
         private void AddKitchenDetails()
         {
             var cabinet = new Color(0.48f, 0.36f, 0.22f);
-            var counter = new Color(0.62f, 0.62f, 0.58f);
-            CreateWorldVisual("Kitchen Counter", PrimitiveType.Cube, new Vector3(-6.4f, 0.46f, 3.35f), new Vector3(2.6f, 0.68f, 0.65f), cabinet);
-            CreateWorldVisual("Kitchen Counter Top", PrimitiveType.Cube, new Vector3(-6.4f, 0.84f, 3.35f), new Vector3(2.75f, 0.08f, 0.78f), counter);
+            AddFurniture("厨房台面", new Vector3(-6.4f, 0.46f, 3.35f), new Vector3(2.75f, 0.92f, 0.82f), new Color(0.48f, 0.36f, 0.22f), false, "Models/Environment/KitchenCounter_LowPoly");
             CreateWorldVisual("Upper Cabinet", PrimitiveType.Cube, new Vector3(-6.4f, 1.65f, 6.7f), new Vector3(2.5f, 0.5f, 0.18f), cabinet * 0.9f);
             CreateWorldVisual("Trash Bin", PrimitiveType.Cylinder, new Vector3(-3.4f, 0.32f, 5.6f), new Vector3(0.38f, 0.58f, 0.38f), new Color(0.18f, 0.22f, 0.22f));
             CreateWorldVisual("Kitchen Mat", PrimitiveType.Cube, new Vector3(-5.2f, 0.026f, 4.65f), new Vector3(2.2f, 0.03f, 0.75f), new Color(0.2f, 0.42f, 0.35f));
