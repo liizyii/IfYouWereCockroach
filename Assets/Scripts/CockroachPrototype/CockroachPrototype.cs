@@ -29,6 +29,7 @@ namespace IfYouWereCockroach.Prototype
         private readonly List<FoodItem> foodItems = new List<FoodItem>();
         private readonly List<HumanController> humans = new List<HumanController>();
         private readonly List<HideSpot> hideSpots = new List<HideSpot>();
+        private readonly List<Rect> blockedFloorAreas = new List<Rect>();
         private readonly string[] foodNames =
         {
             "面包屑", "米饭粒", "苹果核", "糖渍", "肉渣", "饼干屑", "奶酪碎", "面条", "薯片", "果皮",
@@ -145,6 +146,7 @@ namespace IfYouWereCockroach.Prototype
             foodItems.Clear();
             humans.Clear();
             hideSpots.Clear();
+            blockedFloorAreas.Clear();
 
             runRoot = new GameObject("Generated Apartment Run").transform;
             BuildApartment();
@@ -301,7 +303,7 @@ namespace IfYouWereCockroach.Prototype
             int decorationCount = random.Next(5, 10);
             for (int i = 0; i < decorationCount; i++)
             {
-                var position = RandomFloorPosition();
+                var position = RandomOpenFloorPosition(0.6f);
                 var scale = new Vector3(UnityEngine.Random.Range(0.5f, 1.3f), UnityEngine.Random.Range(0.25f, 0.8f), UnityEngine.Random.Range(0.4f, 1.2f));
                 AddFurniture("随机杂物", position + Vector3.up * (scale.y * 0.5f), scale, new Color(UnityEngine.Random.Range(0.25f, 0.75f), UnityEngine.Random.Range(0.25f, 0.75f), UnityEngine.Random.Range(0.25f, 0.75f)), UnityEngine.Random.value > 0.35f, "Models/Environment/Clutter_LowPoly");
             }
@@ -310,7 +312,7 @@ namespace IfYouWereCockroach.Prototype
             for (int i = 0; i < foodCount; i++)
             {
                 var name = foodNames[i % foodNames.Length];
-                var food = CreateFood(name, RandomFloorPosition());
+                var food = CreateFood(name, RandomOpenFloorPosition(0.42f));
                 var collider = food.GetComponent<Collider>();
                 collider.isTrigger = true;
                 var item = food.AddComponent<FoodItem>();
@@ -345,12 +347,12 @@ namespace IfYouWereCockroach.Prototype
                 new Vector3(-2.4f, 0.1f, 2.3f),
                 new Vector3(5.2f, 0.1f, 4.2f),
                 new Vector3(4.7f, 0.1f, -4.7f),
-                RandomFloorPosition() + Vector3.up * 0.1f
+                RandomOpenFloorPosition(0.75f) + Vector3.up * 0.1f
             };
 
             var playerObject = new GameObject("Player Cockroach");
             playerObject.transform.SetParent(runRoot);
-            playerObject.transform.position = spawnChoices[random.Next(spawnChoices.Length)];
+            playerObject.transform.position = ChooseSafeSpawn(spawnChoices);
             player = playerObject.AddComponent<CockroachPlayerController>();
 
             var cockroachModel = Resources.Load<GameObject>("Models/Cockroach/Cockroach_LowPoly");
@@ -400,14 +402,14 @@ namespace IfYouWereCockroach.Prototype
                 var person = people[i % people.Length];
                 var humanObject = new GameObject($"Human - {person.DisplayName}");
                 humanObject.transform.SetParent(runRoot);
-                humanObject.transform.position = RandomFloorPosition();
+                humanObject.transform.position = RandomOpenFloorPosition(0.9f);
 
                 var visualRoot = AddHumanVisual(humanObject.transform, person.Archetype, i);
 
                 var controller = humanObject.AddComponent<HumanController>();
                 controller.DisplayName = person.DisplayName;
                 controller.Configure(person.Archetype, visualRoot);
-                controller.SetHome(RandomFloorPosition());
+                controller.SetHome(RandomOpenFloorPosition(0.9f));
                 RegisterHuman(controller);
             }
 
@@ -464,16 +466,16 @@ namespace IfYouWereCockroach.Prototype
             scaler.matchWidthOrHeight = 0.5f;
             canvasObject.AddComponent<GraphicRaycaster>();
 
-            var statusPanel = CreatePanel(canvasObject.transform, "Status Panel", new Vector2(14f, -14f), TextAnchor.UpperLeft, new Vector2(430f, 132f), new Color(0f, 0f, 0f, 0.58f));
-            var tasksPanel = CreatePanel(canvasObject.transform, "Tasks Panel", new Vector2(14f, -156f), TextAnchor.UpperLeft, new Vector2(430f, 214f), new Color(0f, 0f, 0f, 0.54f));
-            var boardPanel = CreatePanel(canvasObject.transform, "Leaderboard Panel", new Vector2(-14f, -14f), TextAnchor.UpperRight, new Vector2(300f, 148f), new Color(0f, 0f, 0f, 0.42f));
+            var statusPanel = CreatePanel(canvasObject.transform, "Status Panel", new Vector2(16f, -16f), TextAnchor.UpperLeft, new Vector2(540f, 162f), new Color(0f, 0f, 0f, 0.62f));
+            var tasksPanel = CreatePanel(canvasObject.transform, "Tasks Panel", new Vector2(16f, -190f), TextAnchor.UpperLeft, new Vector2(540f, 254f), new Color(0f, 0f, 0f, 0.58f));
+            var boardPanel = CreatePanel(canvasObject.transform, "Leaderboard Panel", new Vector2(-16f, -16f), TextAnchor.UpperRight, new Vector2(330f, 164f), new Color(0f, 0f, 0f, 0.46f));
 
-            statusText = CreateText(statusPanel.transform, "Status", new Vector2(12f, -10f), TextAnchor.UpperLeft, 15, new Vector2(406f, 110f));
-            tasksText = CreateText(tasksPanel.transform, "Tasks", new Vector2(12f, -10f), TextAnchor.UpperLeft, 15, new Vector2(406f, 190f));
-            leaderboardText = CreateText(boardPanel.transform, "Leaderboard", new Vector2(-12f, -10f), TextAnchor.UpperRight, 14, new Vector2(276f, 126f));
-            eventText = CreateText(canvasObject.transform, "Event", new Vector2(0f, 52f), TextAnchor.LowerCenter, 19, new Vector2(900f, 72f));
-            challengePanel = CreatePanel(canvasObject.transform, "Challenge Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(560f, 260f), new Color(0f, 0f, 0f, 0.78f)).gameObject;
-            challengeText = CreateText(challengePanel.transform, "Challenge Text", new Vector2(0f, 0f), TextAnchor.MiddleCenter, 20, new Vector2(520f, 220f));
+            statusText = CreateText(statusPanel.transform, "Status", new Vector2(14f, -12f), TextAnchor.UpperLeft, 19, new Vector2(512f, 136f));
+            tasksText = CreateText(tasksPanel.transform, "Tasks", new Vector2(14f, -12f), TextAnchor.UpperLeft, 18, new Vector2(512f, 228f));
+            leaderboardText = CreateText(boardPanel.transform, "Leaderboard", new Vector2(-14f, -12f), TextAnchor.UpperRight, 16, new Vector2(302f, 138f));
+            eventText = CreateText(canvasObject.transform, "Event", new Vector2(0f, 54f), TextAnchor.LowerCenter, 22, new Vector2(980f, 78f));
+            challengePanel = CreatePanel(canvasObject.transform, "Challenge Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(620f, 300f), new Color(0f, 0f, 0f, 0.8f)).gameObject;
+            challengeText = CreateText(challengePanel.transform, "Challenge Text", new Vector2(0f, 0f), TextAnchor.MiddleCenter, 23, new Vector2(580f, 256f));
             challengePanel.SetActive(false);
         }
 
@@ -831,8 +833,12 @@ namespace IfYouWereCockroach.Prototype
         private void AddFurniture(string name, Vector3 position, Vector3 scale, Color color, bool createsHideSpot, string modelResourcePath = null)
         {
             var furniture = CreatePrimitive(name, PrimitiveType.Cube, position, scale, color);
+            RegisterBlockedArea(position, scale, 0.35f);
             AddFurnitureFloorShadow(name, position, scale);
-            AddFurnitureVisual(furniture.transform, name, color);
+            if (!TryAttachFurnitureModel(furniture.transform, modelResourcePath))
+            {
+                AddFurnitureVisual(furniture.transform, name, color);
+            }
 
             if (!createsHideSpot)
             {
@@ -853,6 +859,47 @@ namespace IfYouWereCockroach.Prototype
             box.isTrigger = true;
             var hideSpot = hideObject.AddComponent<HideSpot>();
             RegisterHideSpot(hideSpot);
+        }
+
+        private bool TryAttachFurnitureModel(Transform parent, string modelResourcePath)
+        {
+            if (string.IsNullOrWhiteSpace(modelResourcePath))
+            {
+                return false;
+            }
+
+            var model = Resources.Load<GameObject>(modelResourcePath);
+            if (model == null)
+            {
+                return false;
+            }
+
+            if (parent.TryGetComponent<Renderer>(out var parentRenderer))
+            {
+                parentRenderer.enabled = false;
+            }
+
+            var visual = Instantiate(model, parent);
+            visual.name = $"{parent.name} Model";
+            visual.transform.localPosition = new Vector3(0f, -0.5f, 0f);
+            visual.transform.localRotation = Quaternion.identity;
+            visual.transform.localScale = Vector3.one;
+            PrepareImportedModel(visual);
+            return true;
+        }
+
+        private void PrepareImportedModel(GameObject modelRoot)
+        {
+            foreach (var collider in modelRoot.GetComponentsInChildren<Collider>())
+            {
+                Destroy(collider);
+            }
+
+            foreach (var renderer in modelRoot.GetComponentsInChildren<Renderer>())
+            {
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                renderer.receiveShadows = true;
+            }
         }
 
         private void AddFurnitureFloorShadow(string name, Vector3 position, Vector3 scale)
@@ -990,6 +1037,35 @@ namespace IfYouWereCockroach.Prototype
             var root = new GameObject("Human Visual Root").transform;
             root.SetParent(parent, false);
 
+            var humanModel = Resources.Load<GameObject>("Models/Human/Human_LowPoly");
+            if (humanModel != null)
+            {
+                float importedHeight = archetype == HumanArchetype.Child ? 0.72f : archetype == HumanArchetype.Elder ? 0.92f : 1f;
+                float importedWidth = archetype == HumanArchetype.Man ? 1.08f : archetype == HumanArchetype.Child ? 0.78f : 0.95f;
+                root.localScale = new Vector3(importedWidth, importedHeight, importedWidth);
+                var visual = Instantiate(humanModel, root);
+                visual.name = $"{archetype} Model";
+                visual.transform.localPosition = Vector3.zero;
+                visual.transform.localRotation = Quaternion.identity;
+                visual.transform.localScale = Vector3.one;
+                PrepareImportedModel(visual);
+
+                if (archetype == HumanArchetype.Woman)
+                {
+                    CreateVisualPrimitive(root, "hair_back_extra", PrimitiveType.Capsule, new Vector3(0f, 1.52f, -0.1f), new Vector3(0.16f, 0.18f, 0.1f), new Color(0.07f, 0.045f, 0.03f));
+                }
+                else if (archetype == HumanArchetype.Child)
+                {
+                    CreateVisualPrimitive(root, "small_backpack", PrimitiveType.Cube, new Vector3(0f, 1.0f, -0.18f), new Vector3(0.24f, 0.32f, 0.08f), new Color(0.12f, 0.22f, 0.48f));
+                }
+                else if (archetype == HumanArchetype.Elder)
+                {
+                    CreateVisualPrimitive(root, "walking_cane", PrimitiveType.Cube, new Vector3(0.42f, 0.52f, 0.1f), new Vector3(0.035f, 0.88f, 0.035f), new Color(0.24f, 0.14f, 0.07f), Quaternion.Euler(0f, 0f, -8f));
+                }
+
+                return root;
+            }
+
             var skin = new Color(0.72f, 0.52f, 0.39f);
             var shirtColors = new[] { new Color(0.32f, 0.4f, 0.5f), new Color(0.48f, 0.28f, 0.26f), new Color(0.34f, 0.44f, 0.31f), new Color(0.42f, 0.34f, 0.5f) };
             var shirt = shirtColors[variant % shirtColors.Length];
@@ -1045,7 +1121,7 @@ namespace IfYouWereCockroach.Prototype
         {
             var petObject = new GameObject($"Pet - {kind}");
             petObject.transform.SetParent(runRoot);
-            petObject.transform.position = RandomFloorPosition();
+            petObject.transform.position = RandomOpenFloorPosition(0.7f);
             AddPetVisual(petObject.transform, kind);
             var controller = petObject.AddComponent<PetController>();
             controller.Configure(kind);
@@ -1090,6 +1166,69 @@ namespace IfYouWereCockroach.Prototype
         private Vector3 RandomFloorPosition()
         {
             return new Vector3(UnityEngine.Random.Range(-7.5f, 7.5f), 0f, UnityEngine.Random.Range(-5.7f, 5.7f));
+        }
+
+        private Vector3 RandomOpenFloorPosition(float clearance)
+        {
+            for (int attempt = 0; attempt < 80; attempt++)
+            {
+                var candidate = RandomFloorPosition();
+                if (IsFloorAreaClear(candidate, clearance))
+                {
+                    return candidate;
+                }
+            }
+
+            var fallbacks = new[]
+            {
+                new Vector3(-7.2f, 0f, -0.2f),
+                new Vector3(-3.4f, 0f, -2.6f),
+                new Vector3(0.8f, 0f, 0.2f),
+                new Vector3(2.2f, 0f, -5.8f),
+                new Vector3(7.1f, 0f, 0.1f)
+            };
+
+            foreach (var point in fallbacks)
+            {
+                if (IsFloorAreaClear(point, clearance * 0.8f))
+                {
+                    return point;
+                }
+            }
+
+            return Vector3.zero;
+        }
+
+        private Vector3 ChooseSafeSpawn(Vector3[] choices)
+        {
+            foreach (var choice in choices.OrderBy(_ => UnityEngine.Random.value))
+            {
+                var floor = new Vector3(choice.x, 0f, choice.z);
+                if (IsFloorAreaClear(floor, 0.75f))
+                {
+                    return floor + Vector3.up * 0.1f;
+                }
+            }
+
+            return RandomOpenFloorPosition(0.75f) + Vector3.up * 0.1f;
+        }
+
+        private bool IsFloorAreaClear(Vector3 position, float clearance)
+        {
+            if (position.x < -8.1f || position.x > 8.1f || position.z < -6.2f || position.z > 6.2f)
+            {
+                return false;
+            }
+
+            var probe = new Rect(position.x - clearance, position.z - clearance, clearance * 2f, clearance * 2f);
+            return blockedFloorAreas.All(area => !area.Overlaps(probe));
+        }
+
+        private void RegisterBlockedArea(Vector3 position, Vector3 scale, float margin)
+        {
+            float width = Mathf.Max(0.5f, scale.x + margin * 2f);
+            float depth = Mathf.Max(0.5f, scale.z + margin * 2f);
+            blockedFloorAreas.Add(new Rect(position.x - width * 0.5f, position.z - depth * 0.5f, width, depth));
         }
 
         private void ShowEvent(string message)
