@@ -295,18 +295,35 @@ def build_toilet(mats):
 def build_human(mats):
     r = root("Human_LowPoly")
     cube("torso", (0, 0, 1.02), (0.24, 0.16, 0.42), mats["shirt"], r)
+    cube("shirt_collar", (0, -0.09, 1.3), (0.18, 0.035, 0.045), mats["shirt_light"], r)
+    cube("belt", (0, -0.01, 0.69), (0.25, 0.17, 0.035), mats["belt"], r)
     sphere("head", (0, 0, 1.55), (0.16, 0.14, 0.16), mats["skin"], r, 14, 7)
+    sphere("left_ear", (-0.17, -0.01, 1.55), (0.035, 0.022, 0.05), mats["skin"], r, 8, 4)
+    sphere("right_ear", (0.17, -0.01, 1.55), (0.035, 0.022, 0.05), mats["skin"], r, 8, 4)
     sphere("hair", (0, 0.025, 1.67), (0.17, 0.13, 0.055), mats["hair"], r, 14, 6)
+    sphere("hair_front", (0, -0.085, 1.64), (0.13, 0.045, 0.04), mats["hair"], r, 12, 5)
     cube("neck", (0, 0, 1.32), (0.08, 0.06, 0.08), mats["skin"], r)
     cube("left_arm", (-0.32, 0, 1.0), (0.07, 0.06, 0.38), mats["skin"], r)
     cube("right_arm", (0.32, 0, 1.0), (0.07, 0.06, 0.38), mats["skin"], r)
+    sphere("left_hand", (-0.32, -0.005, 0.58), (0.075, 0.055, 0.055), mats["skin"], r, 10, 5)
+    sphere("right_hand", (0.32, -0.005, 0.58), (0.075, 0.055, 0.055), mats["skin"], r, 10, 5)
+    for i, x in enumerate((-0.36, -0.32, -0.28)):
+        cube("left_finger", (x, -0.045, 0.52 - i * 0.01), (0.012, 0.035, 0.035), mats["skin_shadow"], r)
+    for i, x in enumerate((0.28, 0.32, 0.36)):
+        cube("right_finger", (x, -0.045, 0.52 - i * 0.01), (0.012, 0.035, 0.035), mats["skin_shadow"], r)
     cube("left_leg", (-0.1, 0, 0.42), (0.075, 0.075, 0.42), mats["pants"], r)
     cube("right_leg", (0.1, 0, 0.42), (0.075, 0.075, 0.42), mats["pants"], r)
+    sphere("left_knee", (-0.1, -0.06, 0.42), (0.07, 0.025, 0.055), mats["pants_light"], r, 8, 4)
+    sphere("right_knee", (0.1, -0.06, 0.42), (0.07, 0.025, 0.055), mats["pants_light"], r, 8, 4)
     cube("left_foot", (-0.1, -0.06, 0.06), (0.1, 0.16, 0.045), mats["shoe"], r)
     cube("right_foot", (0.1, -0.06, 0.06), (0.1, 0.16, 0.045), mats["shoe"], r)
     sphere("left_eye", (-0.055, -0.12, 1.58), (0.018, 0.012, 0.018), mats["black"], r, 8, 4)
     sphere("right_eye", (0.055, -0.12, 1.58), (0.018, 0.012, 0.018), mats["black"], r, 8, 4)
+    cube("left_brow", (-0.055, -0.135, 1.63), (0.055, 0.008, 0.012), mats["hair"], r)
+    cube("right_brow", (0.055, -0.135, 1.63), (0.055, 0.008, 0.012), mats["hair"], r)
     sphere("nose", (0, -0.15, 1.52), (0.028, 0.02, 0.035), mats["skin"], r, 8, 4)
+    sphere("left_cheek", (-0.07, -0.145, 1.5), (0.028, 0.012, 0.02), mats["skin_warm"], r, 8, 4)
+    sphere("right_cheek", (0.07, -0.145, 1.5), (0.028, 0.012, 0.02), mats["skin_warm"], r, 8, 4)
     cube("mouth", (0, -0.145, 1.45), (0.055, 0.008, 0.01), mats["mouth"], r)
     return r
 
@@ -350,10 +367,15 @@ def main():
         "lamp_warm": material("Warm Lamp Shade", (0.95, 0.68, 0.32, 1)),
         "soap": material("Soap Bottle", (0.34, 0.72, 0.66, 1)),
         "skin": material("Skin", (0.72, 0.52, 0.39, 1)),
+        "skin_shadow": material("Skin Shadow", (0.55, 0.37, 0.27, 1)),
+        "skin_warm": material("Skin Warm", (0.82, 0.48, 0.42, 1)),
         "hair": material("Hair", (0.06, 0.04, 0.03, 1)),
         "mouth": material("Mouth", (0.32, 0.07, 0.07, 1)),
         "shirt": material("Shirt", (0.36, 0.42, 0.5, 1)),
+        "shirt_light": material("Shirt Highlight", (0.48, 0.56, 0.66, 1)),
+        "belt": material("Belt", (0.04, 0.03, 0.025, 1)),
         "pants": material("Pants", (0.12, 0.15, 0.19, 1)),
+        "pants_light": material("Pants Highlight", (0.18, 0.22, 0.28, 1)),
         "shoe": material("Shoe", (0.04, 0.035, 0.03, 1)),
     }
 

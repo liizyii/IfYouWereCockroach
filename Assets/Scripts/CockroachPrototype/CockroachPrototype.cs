@@ -29,6 +29,7 @@ namespace IfYouWereCockroach.Prototype
 
         private readonly List<FoodItem> foodItems = new List<FoodItem>();
         private readonly List<HumanController> humans = new List<HumanController>();
+        private readonly List<PetController> pets = new List<PetController>();
         private readonly List<HideSpot> hideSpots = new List<HideSpot>();
         private readonly List<Rect> blockedFloorAreas = new List<Rect>();
         private readonly string[] foodNames =
@@ -49,6 +50,7 @@ namespace IfYouWereCockroach.Prototype
         private float survivalTime;
         private float eventMessageTimer;
         private float spawnGraceTimer;
+        private float dynamicFoodTimer;
         private float suspicion;
         private AudioSource ambientAudioSource;
         private AudioSource musicAudioSource;
@@ -107,6 +109,7 @@ namespace IfYouWereCockroach.Prototype
             survivalTime += Time.deltaTime;
             spawnGraceTimer = Mathf.Max(0f, spawnGraceTimer - Time.deltaTime);
             suspicion = Mathf.Clamp01(suspicion - Time.deltaTime * 0.08f);
+            UpdateDynamicFoodSpawns();
 
             if (Input.GetKeyDown(KeyCode.E))
             {
@@ -153,8 +156,10 @@ namespace IfYouWereCockroach.Prototype
             targetEggCount = 0;
             foodItems.Clear();
             humans.Clear();
+            pets.Clear();
             hideSpots.Clear();
             blockedFloorAreas.Clear();
+            dynamicFoodTimer = UnityEngine.Random.Range(10f, 16f);
 
             runRoot = new GameObject("Generated Apartment Run").transform;
             BuildApartment();
@@ -180,6 +185,30 @@ namespace IfYouWereCockroach.Prototype
             if (!humans.Contains(human))
             {
                 humans.Add(human);
+                foreach (var pet in pets)
+                {
+                    IgnoreAgentCollision(human.BodyCollider, pet.BodyCollider);
+                }
+            }
+        }
+
+        public void RegisterPet(PetController pet)
+        {
+            if (!pets.Contains(pet))
+            {
+                pets.Add(pet);
+                foreach (var human in humans)
+                {
+                    IgnoreAgentCollision(human.BodyCollider, pet.BodyCollider);
+                }
+            }
+        }
+
+        private static void IgnoreAgentCollision(Collider first, Collider second)
+        {
+            if (first != null && second != null)
+            {
+                Physics.IgnoreCollision(first, second, true);
             }
         }
 
@@ -355,13 +384,62 @@ namespace IfYouWereCockroach.Prototype
             for (int i = 0; i < count; i++)
             {
                 var name = foodNames[(existing + i) % foodNames.Length];
-                var food = CreateFood(name, RandomOpenFloorPosition(0.42f));
-                var collider = food.GetComponent<Collider>();
-                collider.isTrigger = true;
-                var item = food.AddComponent<FoodItem>();
-                item.DisplayName = name;
-                RegisterFood(item);
+                var position = UnityEngine.Random.value < 0.22f ? RandomSurfaceFoodPosition() : RandomOpenFloorPosition(0.42f);
+                SpawnFoodItem(name, position);
             }
+        }
+
+        private void UpdateDynamicFoodSpawns()
+        {
+            dynamicFoodTimer -= Time.deltaTime;
+            if (dynamicFoodTimer > 0f)
+            {
+                return;
+            }
+
+            int activeFood = foodItems.Count(food => !food.Eaten);
+            int maxActiveFood = 16 + challengeLevel * 3;
+            if (activeFood < maxActiveFood)
+            {
+                int spawnCount = UnityEngine.Random.value < 0.28f ? 2 : 1;
+                for (int i = 0; i < spawnCount; i++)
+                {
+                    var name = foodNames[(foodItems.Count + i) % foodNames.Length];
+                    var position = UnityEngine.Random.value < 0.48f ? RandomSurfaceFoodPosition() : RandomOpenFloorPosition(0.42f);
+                    SpawnFoodItem(name, position);
+                }
+
+                ShowEvent("地上和家具上又出现了一些食物残渣");
+            }
+
+            dynamicFoodTimer = Mathf.Max(8f, UnityEngine.Random.Range(18f, 28f) - challengeLevel * 1.4f);
+        }
+
+        private void SpawnFoodItem(string name, Vector3 position)
+        {
+            var food = CreateFood(name, position);
+            var collider = food.GetComponent<Collider>();
+            collider.isTrigger = true;
+            var item = food.AddComponent<FoodItem>();
+            item.DisplayName = name;
+            RegisterFood(item);
+        }
+
+        private Vector3 RandomSurfaceFoodPosition()
+        {
+            var spots = new[]
+            {
+                new Vector3(-2.6f, 0.74f, 2.4f),
+                new Vector3(4.7f, 0.42f, 2.2f),
+                new Vector3(5.2f, 0.66f, 4.45f),
+                new Vector3(4.9f, 0.62f, -4.7f),
+                new Vector3(-6.4f, 0.9f, 3.35f),
+                new Vector3(1.0f, 0.98f, -5.6f)
+            };
+
+            var center = spots[UnityEngine.Random.Range(0, spots.Length)];
+            var offset = new Vector3(UnityEngine.Random.Range(-0.45f, 0.45f), 0f, UnityEngine.Random.Range(-0.28f, 0.28f));
+            return center + offset - Vector3.up * 0.12f;
         }
 
         private void BuildPlayer()
@@ -625,15 +703,15 @@ namespace IfYouWereCockroach.Prototype
             var color = new Color(0.38f, 0.23f, 0.12f);
             if (vertical)
             {
-                CreatePrimitive("Door Frame Left", PrimitiveType.Cube, position + new Vector3(0f, 0f, -0.68f), new Vector3(0.18f, 2.2f, 0.08f), color);
-                CreatePrimitive("Door Frame Right", PrimitiveType.Cube, position + new Vector3(0f, 0f, 0.68f), new Vector3(0.18f, 2.2f, 0.08f), color);
+                CreateWorldVisual("Door Frame Left", PrimitiveType.Cube, position + new Vector3(0f, 0f, -0.68f), new Vector3(0.18f, 2.2f, 0.08f), color);
+                CreateWorldVisual("Door Frame Right", PrimitiveType.Cube, position + new Vector3(0f, 0f, 0.68f), new Vector3(0.18f, 2.2f, 0.08f), color);
                 CreateWorldVisual("Open Door Panel", PrimitiveType.Cube, position + new Vector3(0.42f, -0.1f, 0.28f), new Vector3(0.08f, 1.75f, 0.82f), new Color(0.42f, 0.25f, 0.13f), Quaternion.Euler(0f, 32f, 0f));
                 CreateWorldVisual("Door Handle", PrimitiveType.Sphere, position + new Vector3(0.47f, 0.04f, -0.12f), new Vector3(0.08f, 0.08f, 0.08f), new Color(0.75f, 0.62f, 0.35f));
             }
             else
             {
-                CreatePrimitive("Door Frame Left", PrimitiveType.Cube, position + new Vector3(-0.68f, 0f, 0f), new Vector3(0.08f, 2.2f, 0.18f), color);
-                CreatePrimitive("Door Frame Right", PrimitiveType.Cube, position + new Vector3(0.68f, 0f, 0f), new Vector3(0.08f, 2.2f, 0.18f), color);
+                CreateWorldVisual("Door Frame Left", PrimitiveType.Cube, position + new Vector3(-0.68f, 0f, 0f), new Vector3(0.08f, 2.2f, 0.18f), color);
+                CreateWorldVisual("Door Frame Right", PrimitiveType.Cube, position + new Vector3(0.68f, 0f, 0f), new Vector3(0.08f, 2.2f, 0.18f), color);
                 CreateWorldVisual("Open Door Panel", PrimitiveType.Cube, position + new Vector3(0.28f, -0.1f, 0.42f), new Vector3(0.82f, 1.75f, 0.08f), new Color(0.42f, 0.25f, 0.13f), Quaternion.Euler(0f, -32f, 0f));
                 CreateWorldVisual("Door Handle", PrimitiveType.Sphere, position + new Vector3(-0.12f, 0.04f, 0.47f), new Vector3(0.08f, 0.08f, 0.08f), new Color(0.75f, 0.62f, 0.35f));
             }
@@ -1227,6 +1305,7 @@ namespace IfYouWereCockroach.Prototype
             AddPetVisual(petObject.transform, kind);
             var controller = petObject.AddComponent<PetController>();
             controller.Configure(kind);
+            RegisterPet(controller);
         }
 
         private void AddPetVisual(Transform parent, PetKind kind)
@@ -1299,6 +1378,29 @@ namespace IfYouWereCockroach.Prototype
             }
 
             return Vector3.zero;
+        }
+
+        public Vector3 FindOpenFloorPosition(float clearance)
+        {
+            return RandomOpenFloorPosition(clearance);
+        }
+
+        public Vector3 FindOpenFloorPositionNear(Vector3 center, float clearance, float radius)
+        {
+            for (int attempt = 0; attempt < 45; attempt++)
+            {
+                var offset = new Vector3(UnityEngine.Random.Range(-radius, radius), 0f, UnityEngine.Random.Range(-radius, radius));
+                var candidate = center + offset;
+                candidate.x = Mathf.Clamp(candidate.x, -7.6f, 7.6f);
+                candidate.y = 0f;
+                candidate.z = Mathf.Clamp(candidate.z, -5.7f, 5.7f);
+                if (IsFloorAreaClear(candidate, clearance))
+                {
+                    return candidate;
+                }
+            }
+
+            return RandomOpenFloorPosition(clearance);
         }
 
         private Vector3 RandomOpenFloorPositionAwayFromPlayer(float clearance, float minDistance)
@@ -1481,7 +1583,7 @@ namespace IfYouWereCockroach.Prototype
                     $"第 {challengeLevel + 1} 关  已通关 {challengeLevel}\n" +
                     $"声音 {Percent(player != null ? player.NoiseLevel : 0f)}  警觉 {Percent(suspicion)}\n" +
                     $"位置：{hidden}  产卵：{eggState}\n" +
-                    "WASD移动  鼠标转向  E产卵";
+                    "WASD移动  鼠标转向  Space跳跃  E产卵";
             }
 
             if (tasksText != null)
@@ -1600,9 +1702,11 @@ namespace IfYouWereCockroach.Prototype
         private AudioClip detectedClip;
         private AudioClip deathClip;
         private Vector3 currentPlanarVelocity;
+        private Vector3 lastSafePosition;
         private float verticalVelocity;
         private float hideTimer;
         private float detectedSoundCooldown;
+        private float stuckTimer;
         private float mouseSensitivity = 3.2f;
         private int hideContacts;
 
@@ -1631,6 +1735,7 @@ namespace IfYouWereCockroach.Prototype
             eggClip = ProceduralAudio.CreateClickBurst("Lay Egg", 0.34f, 420f, 5);
             detectedClip = ProceduralAudio.CreateTone("Detected Sting", 0.36f, 930f, 0.22f);
             deathClip = ProceduralAudio.CreateTone("Death Thud", 0.52f, 120f, 0.5f);
+            lastSafePosition = transform.position;
 
             audioSource.clip = crawlLoopClip;
             audioSource.loop = true;
@@ -1671,14 +1776,14 @@ namespace IfYouWereCockroach.Prototype
             float forwardInput = Input.GetAxisRaw("Vertical");
             float mouseX = Input.GetAxisRaw("Mouse X");
             IsSprinting = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-            float forwardSpeed = IsSprinting ? 2.15f : 1.05f;
+            float forwardSpeed = IsSprinting ? 2.05f : 1.2f;
             float backwardSpeed = 0.58f;
-            float strafeSpeed = IsSprinting ? 1.35f : 0.72f;
+            float strafeSpeed = IsSprinting ? 1.42f : 0.82f;
             float targetForwardSpeed = forwardInput >= 0f ? forwardInput * forwardSpeed : forwardInput * backwardSpeed;
             Vector3 targetPlanarVelocity = transform.forward * targetForwardSpeed + transform.right * (strafeInput * strafeSpeed);
             targetPlanarVelocity = Vector3.ClampMagnitude(targetPlanarVelocity, forwardSpeed);
 
-            float acceleration = targetPlanarVelocity.sqrMagnitude > currentPlanarVelocity.sqrMagnitude ? 3.2f : 4.8f;
+            float acceleration = targetPlanarVelocity.sqrMagnitude > currentPlanarVelocity.sqrMagnitude ? 9.5f : 18f;
             currentPlanarVelocity = Vector3.MoveTowards(currentPlanarVelocity, targetPlanarVelocity, acceleration * Time.deltaTime);
             transform.Rotate(0f, mouseX * mouseSensitivity, 0f);
             MoveIntensity = Mathf.Clamp01(currentPlanarVelocity.magnitude / forwardSpeed);
@@ -1689,9 +1794,17 @@ namespace IfYouWereCockroach.Prototype
                 verticalVelocity = -0.2f;
             }
 
+            if (characterController.isGrounded && Input.GetKeyDown(KeyCode.Space))
+            {
+                verticalVelocity = Mathf.Sqrt(0.58f * -2f * Physics.gravity.y);
+                AddNoise(0.12f);
+            }
+
             verticalVelocity += Physics.gravity.y * Time.deltaTime;
             move.y = verticalVelocity;
-            characterController.Move(move * Time.deltaTime);
+            var beforeMove = transform.position;
+            var collision = characterController.Move(move * Time.deltaTime);
+            UpdateStuckRecovery(beforeMove, move, collision);
 
             float targetNoise = MoveIntensity * (IsSprinting ? 0.54f : 0.2f);
             if (IsHidden)
@@ -1715,6 +1828,31 @@ namespace IfYouWereCockroach.Prototype
         public void AddNoise(float amount)
         {
             NoiseLevel = Mathf.Clamp01(NoiseLevel + amount);
+        }
+
+        private void UpdateStuckRecovery(Vector3 beforeMove, Vector3 attemptedMove, CollisionFlags collision)
+        {
+            var horizontalBefore = new Vector3(beforeMove.x, 0f, beforeMove.z);
+            var horizontalAfter = new Vector3(transform.position.x, 0f, transform.position.z);
+            float moved = Vector3.Distance(horizontalBefore, horizontalAfter);
+            float intended = new Vector3(attemptedMove.x, 0f, attemptedMove.z).magnitude * Time.deltaTime;
+
+            if (characterController.isGrounded && moved > 0.08f && (collision & CollisionFlags.Sides) == 0)
+            {
+                lastSafePosition = transform.position;
+            }
+
+            bool blocked = intended > 0.01f && moved < intended * 0.25f && (collision & CollisionFlags.Sides) != 0;
+            stuckTimer = blocked ? stuckTimer + Time.deltaTime : Mathf.Max(0f, stuckTimer - Time.deltaTime * 2f);
+            if (stuckTimer < 0.45f)
+            {
+                return;
+            }
+
+            transform.position = lastSafePosition + Vector3.up * 0.08f;
+            currentPlanarVelocity = Vector3.zero;
+            verticalVelocity = -0.2f;
+            stuckTimer = 0f;
         }
 
         public void PlayEatSound()
@@ -2237,10 +2375,12 @@ namespace IfYouWereCockroach.Prototype
         private float detectionCooldown;
         private float activitySoundTimer;
         private float idleLookTimer;
+        private float stuckTimer;
         private Quaternion idleLookRotation = Quaternion.identity;
         private bool chasing;
 
         public string DisplayName { get; set; }
+        public Collider BodyCollider => characterController;
 
         private void Awake()
         {
@@ -2290,7 +2430,7 @@ namespace IfYouWereCockroach.Prototype
                     detectionCooldown = 2.2f;
                 }
 
-                MoveToward(game.Player.transform.position, 2.25f);
+                MoveToward(game.Player.transform.position, 1.65f);
                 if (Vector3.Distance(transform.position, game.Player.transform.position) < 0.65f && !game.Player.IsHidden)
                 {
                     game.KillPlayer($"{DisplayName} 一脚踩中了你");
@@ -2334,7 +2474,7 @@ namespace IfYouWereCockroach.Prototype
             }
 
             SetActivity(HumanActivity.Standing);
-            MoveToward(destination, 1.05f);
+            MoveToward(destination, 0.82f);
             if (Vector3.Distance(new Vector3(transform.position.x, 0f, transform.position.z), destination) < 0.4f)
             {
                 waitTimer = UnityEngine.Random.Range(1.2f, 4.5f);
@@ -2357,13 +2497,35 @@ namespace IfYouWereCockroach.Prototype
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime * 8f);
             var move = direction * speed;
             move.y = Physics.gravity.y;
-            characterController.Move(move * Time.deltaTime);
+            var beforeMove = transform.position;
+            var collision = characterController.Move(move * Time.deltaTime);
+            RecoverIfStuck(beforeMove, move, collision);
             activitySoundTimer -= Time.deltaTime;
             if (activitySoundTimer <= 0f)
             {
                 activitySoundTimer = speed > 1.5f ? 0.48f : 0.82f;
                 audioSource.PlayOneShot(stepClip, speed > 1.5f ? 0.12f : 0.055f);
             }
+        }
+
+        private void RecoverIfStuck(Vector3 beforeMove, Vector3 attemptedMove, CollisionFlags collision)
+        {
+            var horizontalBefore = new Vector3(beforeMove.x, 0f, beforeMove.z);
+            var horizontalAfter = new Vector3(transform.position.x, 0f, transform.position.z);
+            float moved = Vector3.Distance(horizontalBefore, horizontalAfter);
+            float intended = new Vector3(attemptedMove.x, 0f, attemptedMove.z).magnitude * Time.deltaTime;
+            bool blocked = intended > 0.01f && moved < intended * 0.35f && (collision & CollisionFlags.Sides) != 0;
+            stuckTimer = blocked ? stuckTimer + Time.deltaTime : Mathf.Max(0f, stuckTimer - Time.deltaTime * 2f);
+            if (stuckTimer < 0.8f)
+            {
+                return;
+            }
+
+            var sidestep = (UnityEngine.Random.value < 0.5f ? -transform.right : transform.right) * 0.38f - transform.forward * 0.18f;
+            characterController.Move(sidestep);
+            PickDestination();
+            waitTimer = UnityEngine.Random.Range(0.15f, 0.45f);
+            stuckTimer = 0f;
         }
 
         private void LookAroundWhileIdle()
@@ -2501,19 +2663,19 @@ namespace IfYouWereCockroach.Prototype
         private bool CanHearPlayer(CockroachPlayerController player)
         {
             float distance = Vector3.Distance(transform.position, player.transform.position);
-            float hearing = Mathf.Lerp(1.8f, 8.2f, player.NoiseLevel);
+            float hearing = Mathf.Lerp(2.4f, 10.5f, player.NoiseLevel);
             if (player.IsHidden)
             {
                 hearing *= 0.45f;
             }
 
-            bool heard = distance < hearing && player.NoiseLevel > 0.12f;
+            bool heard = distance < hearing && player.NoiseLevel > 0.07f;
             if (heard)
             {
-                CockroachGameManager.Instance.AddSuspicion(Time.deltaTime * 0.42f);
+                CockroachGameManager.Instance.AddSuspicion(Time.deltaTime * 0.55f);
             }
 
-            return heard && (distance < 2.4f || CockroachGameManager.Instance.Suspicion > 0.22f);
+            return heard && (distance < 3.2f || CockroachGameManager.Instance.Suspicion > 0.16f);
         }
 
         private bool HasLineOfSight(CockroachPlayerController player)
@@ -2531,6 +2693,13 @@ namespace IfYouWereCockroach.Prototype
 
         private void PickDestination()
         {
+            var game = CockroachGameManager.Instance;
+            if (game != null)
+            {
+                destination = game.FindOpenFloorPositionNear(home, characterController != null ? characterController.radius + 0.25f : 0.7f, 3.4f);
+                return;
+            }
+
             var offset = new Vector3(UnityEngine.Random.Range(-4.5f, 4.5f), 0f, UnityEngine.Random.Range(-3.5f, 3.5f));
             destination = home + offset;
             destination.x = Mathf.Clamp(destination.x, -6.8f, 6.8f);
@@ -2548,6 +2717,9 @@ namespace IfYouWereCockroach.Prototype
         private Vector3 destination;
         private float waitTimer;
         private float soundTimer;
+        private float stuckTimer;
+
+        public Collider BodyCollider => characterController;
 
         private void Awake()
         {
@@ -2582,10 +2754,12 @@ namespace IfYouWereCockroach.Prototype
 
             soundTimer -= Time.deltaTime;
             float distanceToPlayer = Vector3.Distance(transform.position, game.Player.transform.position);
-            bool curious = distanceToPlayer < (kind == PetKind.Cat ? 4.2f : 3.2f) && !game.Player.IsHidden;
+            float curiosityRange = kind == PetKind.Cat ? 4.6f : 3.8f;
+            curiosityRange += game.Player.NoiseLevel * 3.2f;
+            bool curious = distanceToPlayer < curiosityRange && !game.Player.IsHidden;
             if (curious)
             {
-                MoveToward(game.Player.transform.position, kind == PetKind.Cat ? 1.7f : 1.35f);
+                MoveToward(game.Player.transform.position, kind == PetKind.Cat ? 1.9f : 1.28f);
                 game.AddSuspicion(Time.deltaTime * 0.12f);
                 if (distanceToPlayer < 0.45f)
                 {
@@ -2605,7 +2779,7 @@ namespace IfYouWereCockroach.Prototype
                 return;
             }
 
-            MoveToward(destination, kind == PetKind.Cat ? 1.1f : 0.9f);
+            MoveToward(destination, kind == PetKind.Cat ? 1.05f : 0.82f);
             if (Vector3.Distance(new Vector3(transform.position.x, 0f, transform.position.z), destination) < 0.35f)
             {
                 waitTimer = UnityEngine.Random.Range(1.5f, 4.2f);
@@ -2627,7 +2801,9 @@ namespace IfYouWereCockroach.Prototype
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime * 10f);
             var move = direction * speed;
             move.y = Physics.gravity.y;
-            characterController.Move(move * Time.deltaTime);
+            var beforeMove = transform.position;
+            var collision = characterController.Move(move * Time.deltaTime);
+            RecoverIfStuck(beforeMove, move, collision);
 
             if (soundTimer <= 0f)
             {
@@ -2636,9 +2812,32 @@ namespace IfYouWereCockroach.Prototype
             }
         }
 
+        private void RecoverIfStuck(Vector3 beforeMove, Vector3 attemptedMove, CollisionFlags collision)
+        {
+            var horizontalBefore = new Vector3(beforeMove.x, 0f, beforeMove.z);
+            var horizontalAfter = new Vector3(transform.position.x, 0f, transform.position.z);
+            float moved = Vector3.Distance(horizontalBefore, horizontalAfter);
+            float intended = new Vector3(attemptedMove.x, 0f, attemptedMove.z).magnitude * Time.deltaTime;
+            bool blocked = intended > 0.01f && moved < intended * 0.35f && (collision & CollisionFlags.Sides) != 0;
+            stuckTimer = blocked ? stuckTimer + Time.deltaTime : Mathf.Max(0f, stuckTimer - Time.deltaTime * 2f);
+            if (stuckTimer < 0.65f)
+            {
+                return;
+            }
+
+            var sidestep = (UnityEngine.Random.value < 0.5f ? -transform.right : transform.right) * 0.3f - transform.forward * 0.16f;
+            characterController.Move(sidestep);
+            PickDestination();
+            waitTimer = UnityEngine.Random.Range(0.2f, 0.55f);
+            stuckTimer = 0f;
+        }
+
         private void PickDestination()
         {
-            destination = new Vector3(UnityEngine.Random.Range(-7.4f, 7.4f), 0f, UnityEngine.Random.Range(-5.6f, 5.6f));
+            var game = CockroachGameManager.Instance;
+            destination = game != null
+                ? game.FindOpenFloorPosition(kind == PetKind.Cat ? 0.48f : 0.6f)
+                : new Vector3(UnityEngine.Random.Range(-7.4f, 7.4f), 0f, UnityEngine.Random.Range(-5.6f, 5.6f));
         }
     }
 
