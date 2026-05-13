@@ -687,15 +687,21 @@ namespace IfYouWereCockroach.Prototype
         private void BuildInteriorRooms()
         {
             var wallColor = new Color(0.72f, 0.71f, 0.66f);
-            CreatePrimitive("Interior Wall Kitchen Bath Lower", PrimitiveType.Cube, new Vector3(-2f, 1.05f, -5.2f), new Vector3(0.14f, 2.1f, 3.6f), wallColor);
-            CreatePrimitive("Interior Wall Kitchen Bath Upper", PrimitiveType.Cube, new Vector3(-2f, 1.05f, 4.45f), new Vector3(0.14f, 2.1f, 5.1f), wallColor);
-            CreatePrimitive("Interior Wall Bedroom Living Left", PrimitiveType.Cube, new Vector3(-6.1f, 1.05f, -1f), new Vector3(5.8f, 2.1f, 0.14f), wallColor);
-            CreatePrimitive("Interior Wall Bedroom Living Right", PrimitiveType.Cube, new Vector3(4.3f, 1.05f, -1f), new Vector3(9.4f, 2.1f, 0.14f), wallColor);
+            AddBlockingWall("Interior Wall Kitchen Bath Lower", new Vector3(-2f, 1.05f, -5.2f), new Vector3(0.14f, 2.1f, 3.6f), wallColor);
+            AddBlockingWall("Interior Wall Kitchen Bath Upper", new Vector3(-2f, 1.05f, 4.45f), new Vector3(0.14f, 2.1f, 5.1f), wallColor);
+            AddBlockingWall("Interior Wall Bedroom Living Left", new Vector3(-6.1f, 1.05f, -1f), new Vector3(5.8f, 2.1f, 0.14f), wallColor);
+            AddBlockingWall("Interior Wall Bedroom Living Right", new Vector3(4.3f, 1.05f, -1f), new Vector3(9.4f, 2.1f, 0.14f), wallColor);
 
             AddDoorFrame(new Vector3(-2f, 1.1f, -1f), true);
             AddDoorFrame(new Vector3(-2f, 1.1f, 2.1f), true);
             AddDoorFrame(new Vector3(-1f, 1.1f, -1f), false);
             AddDoorFrame(new Vector3(0.2f, 1.1f, -1f), false);
+        }
+
+        private void AddBlockingWall(string name, Vector3 position, Vector3 scale, Color color)
+        {
+            CreatePrimitive(name, PrimitiveType.Cube, position, scale, color);
+            RegisterBlockedArea(position, scale, 0.24f);
         }
 
         private void AddDoorFrame(Vector3 position, bool vertical)
@@ -1033,10 +1039,63 @@ namespace IfYouWereCockroach.Prototype
 
             var visual = Instantiate(model, parent);
             visual.name = $"{parent.name} Model";
-            visual.transform.localPosition = new Vector3(0f, -0.5f, 0f);
+            visual.transform.SetParent(runRoot, false);
+            visual.transform.position = parent.position;
             visual.transform.localRotation = ImportedModelUprightRotation;
             visual.transform.localScale = Vector3.one;
             PrepareImportedModel(visual);
+            FitImportedFurnitureModel(visual, parent.position, parent.lossyScale);
+            return true;
+        }
+
+        private static void FitImportedFurnitureModel(GameObject visual, Vector3 targetCenter, Vector3 targetFootprint)
+        {
+            if (!TryGetWorldBounds(visual, out var bounds))
+            {
+                return;
+            }
+
+            float targetHeight = Mathf.Max(0.25f, targetCenter.y * 2f);
+            var targetSize = new Vector3(
+                Mathf.Max(0.25f, targetFootprint.x),
+                targetHeight,
+                Mathf.Max(0.25f, targetFootprint.z));
+            var safeSize = new Vector3(
+                Mathf.Max(0.001f, bounds.size.x),
+                Mathf.Max(0.001f, bounds.size.y),
+                Mathf.Max(0.001f, bounds.size.z));
+            visual.transform.localScale = Vector3.Scale(visual.transform.localScale, new Vector3(
+                targetSize.x / safeSize.x,
+                targetSize.y / safeSize.y,
+                targetSize.z / safeSize.z));
+
+            if (!TryGetWorldBounds(visual, out bounds))
+            {
+                return;
+            }
+
+            var delta = new Vector3(
+                targetCenter.x - bounds.center.x,
+                0f - bounds.min.y,
+                targetCenter.z - bounds.center.z);
+            visual.transform.position += delta;
+        }
+
+        private static bool TryGetWorldBounds(GameObject root, out Bounds bounds)
+        {
+            var renderers = root.GetComponentsInChildren<Renderer>();
+            bounds = new Bounds();
+            if (renderers.Length == 0)
+            {
+                return false;
+            }
+
+            bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+            {
+                bounds.Encapsulate(renderers[i].bounds);
+            }
+
             return true;
         }
 
@@ -1722,6 +1781,7 @@ namespace IfYouWereCockroach.Prototype
             characterController.height = 0.22f;
             characterController.center = new Vector3(0f, 0.11f, 0f);
             characterController.stepOffset = 0.05f;
+            characterController.skinWidth = 0.018f;
 
             audioSource = gameObject.AddComponent<AudioSource>();
             audioSource.playOnAwake = false;
@@ -2388,6 +2448,7 @@ namespace IfYouWereCockroach.Prototype
             characterController.radius = 0.35f;
             characterController.height = 1.8f;
             characterController.center = Vector3.up * 0.9f;
+            characterController.skinWidth = 0.045f;
             audioSource = gameObject.AddComponent<AudioSource>();
             audioSource.playOnAwake = false;
             audioSource.spatialBlend = 1f;
@@ -2727,6 +2788,7 @@ namespace IfYouWereCockroach.Prototype
             characterController.radius = 0.22f;
             characterController.height = 0.48f;
             characterController.center = Vector3.up * 0.24f;
+            characterController.skinWidth = 0.03f;
 
             audioSource = gameObject.AddComponent<AudioSource>();
             audioSource.playOnAwake = false;
