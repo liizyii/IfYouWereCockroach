@@ -1,4 +1,5 @@
 import os
+import math
 
 import bpy
 
@@ -55,13 +56,46 @@ def sphere(name, location, scale, mat, parent, segments=12, rings=6):
     return obj
 
 
-def cylinder(name, location, radius, depth, mat, parent, vertices=12):
+def cylinder(name, location, radius, depth, mat, parent, vertices=12, rotation=None):
     bpy.ops.mesh.primitive_cylinder_add(vertices=vertices, radius=radius, depth=depth, location=location)
     obj = bpy.context.object
     obj.name = name
+    if rotation is not None:
+        obj.rotation_euler = rotation
     obj.data.materials.append(mat)
     obj.parent = parent
     soften(obj, 0.008, 1)
+    return obj
+
+
+def wavy_surface(name, center, size, mat, parent, cols=12, rows=8, ripple=0.018):
+    verts = []
+    faces = []
+    for row in range(rows + 1):
+        v = row / rows
+        for col in range(cols + 1):
+            u = col / cols
+            x = center[0] + (u - 0.5) * size[0]
+            y = center[1] + (v - 0.5) * size[1]
+            z = center[2] + math.sin(u * math.pi * 3.0) * ripple + math.cos(v * math.pi * 2.0) * ripple * 0.45
+            verts.append((x, y, z))
+
+    for row in range(rows):
+        for col in range(cols):
+            a = row * (cols + 1) + col
+            faces.append((a, a + 1, a + cols + 2, a + cols + 1))
+
+    mesh = bpy.data.meshes.new(name + "Mesh")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.data.materials.append(mat)
+    obj.parent = parent
+    bpy.context.collection.objects.link(obj)
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    bpy.ops.object.shade_smooth()
+    obj.select_set(False)
     return obj
 
 
@@ -131,9 +165,11 @@ def build_stove(mats):
 
 
 def add_chair(parent, mats, x, y, rot=0):
-    sphere("chair_seat_pad", (x, y, 0.4), (0.2, 0.17, 0.035), mats["chair_pad"], parent, 18, 8)
+    sphere("chair_seat_pad", (x, y, 0.4), (0.2, 0.17, 0.04), mats["chair_pad"], parent, 24, 10)
     cube("chair_seat", (x, y, 0.36), (0.18, 0.16, 0.025), mats["wood"], parent)
-    cube("chair_back", (x, y + 0.13, 0.62), (0.18, 0.035, 0.26), mats["wood_dark"], parent)
+    cube("chair_back_frame", (x, y + 0.13, 0.62), (0.2, 0.025, 0.26), mats["wood_dark"], parent)
+    for lx in (-0.07, 0.0, 0.07):
+        cylinder("chair_back_slat", (x + lx, y + 0.105, 0.62), 0.01, 0.44, mats["wood"], parent, 10)
     for lx in (-0.13, 0.13):
         for ly in (-0.1, 0.1):
             cylinder("chair_leg", (x + lx, y + ly, 0.18), 0.018, 0.36, mats["wood_dark"], parent, 10)
@@ -141,13 +177,20 @@ def add_chair(parent, mats, x, y, rot=0):
 
 def build_table(mats):
     r = root("DiningTable_LowPoly")
-    cube("top", (0, 0, 0.72), (0.52, 0.36, 0.04), mats["wood"], r)
-    cube("table_runner", (0, 0, 0.765), (0.12, 0.34, 0.01), mats["cloth_tan"], r)
-    cylinder("plate", (0.14, -0.05, 0.795), 0.1, 0.015, mats["porcelain"], r, 24)
-    cylinder("bowl", (-0.08, -0.08, 0.81), 0.075, 0.055, mats["porcelain"], r, 20)
-    cylinder("cup", (-0.18, 0.06, 0.84), 0.045, 0.09, mats["cool_white"], r, 18)
-    cube("fork", (0.28, -0.08, 0.82), (0.012, 0.12, 0.006), mats["metal"], r)
-    cube("knife", (0.31, 0.05, 0.82), (0.015, 0.13, 0.006), mats["metal"], r)
+    cube("thick_rounded_top", (0, 0, 0.72), (0.54, 0.37, 0.055), mats["wood"], r)
+    cube("beveled_top_lip", (0, 0, 0.775), (0.58, 0.41, 0.018), mats["wood_dark"], r)
+    wavy_surface("cloth_runner_soft", (0, 0, 0.797), (0.18, 0.62), mats["cloth_tan"], r, 10, 18, 0.006)
+    cylinder("dinner_plate_outer", (0.14, -0.05, 0.822), 0.115, 0.018, mats["porcelain"], r, 36)
+    cylinder("dinner_plate_inner", (0.14, -0.05, 0.836), 0.078, 0.006, mats["plate_shadow"], r, 36)
+    cylinder("bowl", (-0.08, -0.08, 0.835), 0.078, 0.07, mats["porcelain"], r, 28)
+    sphere("bowl_food", (-0.08, -0.08, 0.884), (0.06, 0.045, 0.018), mats["stain_red"], r, 16, 6)
+    cylinder("cup", (-0.18, 0.06, 0.865), 0.048, 0.11, mats["cool_white"], r, 24)
+    cylinder("cup_coffee", (-0.18, 0.06, 0.923), 0.041, 0.008, mats["coffee"], r, 24)
+    cube("fork_handle", (0.28, -0.08, 0.84), (0.012, 0.12, 0.006), mats["metal"], r)
+    for x in (0.266, 0.276, 0.286):
+        cube("fork_tine", (x, -0.145, 0.846), (0.004, 0.035, 0.004), mats["metal"], r)
+    cube("knife_blade_table", (0.31, 0.05, 0.84), (0.016, 0.13, 0.006), mats["metal"], r)
+    cube("knife_handle_table", (0.31, 0.13, 0.842), (0.022, 0.055, 0.008), mats["black"], r)
     for x in (-0.42, 0.42):
         for y in (-0.27, 0.27):
             cylinder("rounded_leg", (x, y, 0.34), 0.026, 0.68, mats["wood_dark"], r, 12)
@@ -163,18 +206,23 @@ def build_table(mats):
 
 def build_sofa(mats):
     r = root("Sofa_LowPoly")
-    sphere("soft_seat_base", (0, -0.02, 0.31), (0.54, 0.44, 0.16), mats["fabric_blue"], r, 24, 10)
-    cube("back", (0, 0.32, 0.54), (0.52, 0.09, 0.34), mats["fabric_blue"], r)
-    cube("left_arm", (-0.47, 0, 0.44), (0.06, 0.42, 0.32), mats["fabric_blue_dark"], r)
-    cube("right_arm", (0.47, 0, 0.44), (0.06, 0.42, 0.32), mats["fabric_blue_dark"], r)
-    sphere("cushion_left", (-0.24, -0.06, 0.49), (0.23, 0.31, 0.055), mats["fabric_blue_light"], r, 20, 8)
-    sphere("cushion_right", (0.24, -0.06, 0.49), (0.23, 0.31, 0.055), mats["fabric_blue_light"], r, 20, 8)
+    cube("sofa_lower_shadow_base", (0, -0.02, 0.2), (0.52, 0.42, 0.1), mats["fabric_blue_dark"], r)
+    sphere("soft_seat_base", (0, -0.02, 0.33), (0.56, 0.45, 0.18), mats["fabric_blue"], r, 32, 14)
+    sphere("rounded_back_cushion", (0, 0.31, 0.58), (0.54, 0.085, 0.36), mats["fabric_blue"], r, 28, 12)
+    sphere("left_arm_round", (-0.48, 0, 0.44), (0.07, 0.43, 0.33), mats["fabric_blue_dark"], r, 18, 10)
+    sphere("right_arm_round", (0.48, 0, 0.44), (0.07, 0.43, 0.33), mats["fabric_blue_dark"], r, 18, 10)
+    sphere("cushion_left", (-0.24, -0.06, 0.49), (0.23, 0.31, 0.065), mats["fabric_blue_light"], r, 28, 10)
+    sphere("cushion_right", (0.24, -0.06, 0.49), (0.23, 0.31, 0.065), mats["fabric_blue_light"], r, 28, 10)
+    wavy_surface("left_cushion_fabric_surface", (-0.24, -0.06, 0.56), (0.42, 0.52), mats["fabric_blue_light"], r, 12, 12, 0.008)
+    wavy_surface("right_cushion_fabric_surface", (0.24, -0.06, 0.56), (0.42, 0.52), mats["fabric_blue_light"], r, 12, 12, 0.008)
     cube("cushion_gap", (0, -0.06, 0.515), (0.012, 0.31, 0.015), mats["fabric_blue_dark"], r)
     cube("front_seam", (0, -0.29, 0.46), (0.42, 0.012, 0.015), mats["fabric_blue_dark"], r)
-    sphere("throw_pillow", (-0.24, 0.25, 0.62), (0.13, 0.045, 0.12), mats["red"], r, 16, 8)
-    sphere("folded_blanket", (0.22, 0.2, 0.68), (0.17, 0.055, 0.105), mats["blanket"], r, 16, 8)
+    sphere("throw_pillow", (-0.24, 0.25, 0.62), (0.135, 0.05, 0.125), mats["red"], r, 20, 10)
+    sphere("folded_blanket", (0.22, 0.2, 0.68), (0.18, 0.06, 0.11), mats["blanket"], r, 20, 10)
     for x in (-0.22, 0.22):
         cube("fabric_stitch", (x, -0.3, 0.5), (0.16, 0.008, 0.01), mats["fabric_thread"], r)
+    for x in (-0.33, -0.16, 0.16, 0.33):
+        cube("vertical_back_fabric_tuck", (x, 0.235, 0.61), (0.01, 0.01, 0.22), mats["fabric_thread"], r)
     for x in (-0.38, 0.38):
         for y in (-0.28, 0.25):
             cube("sofa_leg", (x, y, 0.08), (0.03, 0.03, 0.08), mats["wood_dark"], r)
@@ -199,14 +247,18 @@ def build_coffee_table(mats):
 
 def build_bed(mats):
     r = root("Bed_LowPoly")
-    cube("frame", (0, 0, 0.22), (0.5, 0.48, 0.16), mats["wood_dark"], r)
-    sphere("rounded_mattress", (0, 0, 0.39), (0.49, 0.46, 0.105), mats["sheet"], r, 24, 10)
-    sphere("soft_blanket", (0, -0.05, 0.51), (0.48, 0.29, 0.045), mats["blanket"], r, 24, 8)
+    cube("wood_frame_rounded", (0, 0, 0.22), (0.52, 0.5, 0.16), mats["wood_dark"], r)
+    sphere("rounded_mattress", (0, 0, 0.4), (0.5, 0.47, 0.115), mats["sheet"], r, 30, 12)
+    wavy_surface("slightly_wrinkled_sheet_top", (0, 0.02, 0.52), (0.88, 0.78), mats["sheet"], r, 16, 12, 0.009)
+    sphere("soft_blanket", (0, -0.07, 0.54), (0.49, 0.3, 0.052), mats["blanket"], r, 28, 10)
+    wavy_surface("blanket_wrinkled_top", (0, -0.08, 0.59), (0.86, 0.46), mats["blanket"], r, 14, 8, 0.014)
     cube("blanket_fold", (0, 0.12, 0.555), (0.47, 0.035, 0.025), mats["blanket_dark"], r)
     cube("headboard", (0, 0.52, 0.5), (0.52, 0.055, 0.36), mats["wood_dark"], r)
     cube("headboard_top", (0, 0.54, 0.72), (0.56, 0.07, 0.05), mats["wood"], r)
-    sphere("pillow_left", (-0.17, 0.3, 0.55), (0.15, 0.11, 0.045), mats["pillow"], r, 16, 8)
-    sphere("pillow_right", (0.17, 0.3, 0.55), (0.15, 0.11, 0.045), mats["pillow"], r, 16, 8)
+    sphere("pillow_left", (-0.17, 0.3, 0.57), (0.16, 0.12, 0.055), mats["pillow"], r, 24, 10)
+    sphere("pillow_right", (0.17, 0.3, 0.57), (0.16, 0.12, 0.055), mats["pillow"], r, 24, 10)
+    cube("pillow_left_indent", (-0.17, 0.2, 0.592), (0.12, 0.01, 0.006), mats["pillow_shadow"], r)
+    cube("pillow_right_indent", (0.17, 0.2, 0.592), (0.12, 0.01, 0.006), mats["pillow_shadow"], r)
     for x in (-0.18, 0.0, 0.18):
         cube("blanket_wrinkle", (x, -0.1, 0.56), (0.012, 0.24, 0.01), mats["blanket_dark"], r)
     for x in (-0.38, 0.38):
@@ -375,6 +427,7 @@ def main():
         "cool_white": material("Cool White", (0.9, 0.95, 0.94, 1)),
         "cool_shadow": material("Cool Shadow", (0.55, 0.62, 0.62, 1)),
         "porcelain": material("Porcelain", (0.92, 0.94, 0.9, 1)),
+        "plate_shadow": material("Plate Inner Shadow", (0.72, 0.74, 0.7, 1)),
         "metal": material("Metal", (0.55, 0.58, 0.57, 1)),
         "metal_dark": material("Dark Metal", (0.24, 0.25, 0.25, 1)),
         "counter_stone": material("Speckled Counter Stone", (0.58, 0.57, 0.53, 1)),
@@ -382,6 +435,7 @@ def main():
         "tile_grout": material("Tile Grout", (0.36, 0.35, 0.32, 1)),
         "dark": material("Dark Appliance", (0.08, 0.085, 0.09, 1)),
         "black": material("Black", (0.005, 0.005, 0.005, 1)),
+        "coffee": material("Coffee", (0.16, 0.075, 0.025, 1)),
         "seal": material("Rubber Seal", (0.02, 0.025, 0.025, 1)),
         "glass": material("Dark Glass", (0.06, 0.08, 0.09, 1)),
         "glass_blue": material("Blue Glass", (0.35, 0.58, 0.7, 1)),
@@ -399,6 +453,7 @@ def main():
         "blanket": material("Blanket", (0.28, 0.36, 0.52, 1)),
         "blanket_dark": material("Blanket Fold", (0.18, 0.24, 0.42, 1)),
         "pillow": material("Pillow", (0.88, 0.86, 0.78, 1)),
+        "pillow_shadow": material("Pillow Seam Shadow", (0.66, 0.64, 0.58, 1)),
         "cardboard": material("Cardboard", (0.54, 0.39, 0.23, 1)),
         "cloth": material("Cloth", (0.52, 0.23, 0.27, 1)),
         "cutting_board": material("Cutting Board", (0.62, 0.38, 0.18, 1)),
