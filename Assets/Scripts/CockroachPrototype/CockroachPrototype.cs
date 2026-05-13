@@ -313,6 +313,10 @@ namespace IfYouWereCockroach.Prototype
             AddFurniture("茶几", new Vector3(4.7f, 0.28f, 2.2f), new Vector3(1.9f, 0.26f, 1.1f), new Color(0.36f, 0.25f, 0.17f), true, "Models/Environment/CoffeeTable_LowPoly");
             AddFurniture("床", new Vector3(4.9f, 0.36f, -4.7f), new Vector3(3.2f, 0.7f, 2.2f), new Color(0.35f, 0.42f, 0.58f), true, "Models/Environment/Bed_LowPoly");
             AddFurniture("洗手台", new Vector3(-7.1f, 0.4f, -5.6f), new Vector3(1.2f, 0.8f, 0.8f), new Color(0.88f, 0.9f, 0.88f), true, "Models/Environment/Sink_LowPoly");
+            AddFurniture("书架", new Vector3(8.0f, 0.82f, 0.4f), new Vector3(1.2f, 1.65f, 0.5f), new Color(0.3f, 0.18f, 0.1f), false, "Models/Environment/Bookshelf_LowPoly");
+            AddFurniture("衣柜", new Vector3(7.2f, 0.95f, -5.8f), new Vector3(1.45f, 1.9f, 0.62f), new Color(0.32f, 0.2f, 0.12f), false, "Models/Environment/Wardrobe_LowPoly");
+            AddFurniture("电脑桌", new Vector3(1.0f, 0.48f, -5.6f), new Vector3(1.45f, 0.96f, 0.85f), new Color(0.38f, 0.25f, 0.16f), true, "Models/Environment/Desk_LowPoly");
+            AddFurniture("马桶", new Vector3(-4.8f, 0.34f, -5.65f), new Vector3(0.9f, 0.68f, 0.9f), new Color(0.9f, 0.9f, 0.86f), false, "Models/Environment/Toilet_LowPoly");
 
             int decorationCount = random.Next(5, 10);
             for (int i = 0; i < decorationCount; i++)
@@ -863,6 +867,7 @@ namespace IfYouWereCockroach.Prototype
             {
                 AddFurnitureVisual(furniture.transform, name, color);
             }
+            AddFurnitureAudio(furniture, name);
 
             if (!createsHideSpot)
             {
@@ -884,6 +889,49 @@ namespace IfYouWereCockroach.Prototype
             var hideSpot = hideObject.AddComponent<HideSpot>();
             RegisterHideSpot(hideSpot);
             AddHideAreaVisual(name, position, scale);
+        }
+
+        private void AddFurnitureAudio(GameObject furniture, string name)
+        {
+            var source = furniture.AddComponent<AudioSource>();
+            source.playOnAwake = false;
+            source.loop = true;
+            source.spatialBlend = 1f;
+            source.minDistance = 0.45f;
+            source.maxDistance = 5.5f;
+
+            if (name.Contains("冰箱"))
+            {
+                source.clip = ProceduralAudio.CreateApplianceLoop("Fridge Compressor", 54f, 0.018f, 0.004f);
+                source.volume = 0.18f;
+            }
+            else if (name.Contains("灶台"))
+            {
+                source.clip = ProceduralAudio.CreateApplianceLoop("Stove Electric Tick", 118f, 0.008f, 0.018f);
+                source.volume = 0.12f;
+                source.maxDistance = 4.5f;
+            }
+            else if (name.Contains("洗手台"))
+            {
+                source.clip = ProceduralAudio.CreateWaterDripLoop();
+                source.volume = 0.1f;
+                source.maxDistance = 4f;
+            }
+            else if (name.Contains("沙发") || name.Contains("床"))
+            {
+                source.clip = ProceduralAudio.CreateFabricRoomTone(name);
+                source.volume = 0.055f;
+                source.maxDistance = 3.2f;
+            }
+            else
+            {
+                source.clip = ProceduralAudio.CreateObjectRoomTone(name);
+                source.volume = 0.035f;
+                source.maxDistance = 2.8f;
+            }
+
+            source.pitch = UnityEngine.Random.Range(0.92f, 1.08f);
+            source.Play();
         }
 
         private bool TryAttachFurnitureModel(Transform parent, string modelResourcePath)
@@ -1930,6 +1978,114 @@ namespace IfYouWereCockroach.Prototype
             }
 
             var clip = AudioClip.Create("House Ambience", sampleCount, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateApplianceLoop(string name, float baseFrequency, float humAmount, float tickAmount)
+        {
+            float duration = 2.6f;
+            int sampleCount = Mathf.CeilToInt(SampleRate * duration);
+            var data = new float[sampleCount];
+            var random = new System.Random(name.GetHashCode());
+
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = i / (float)SampleRate;
+                float hum = Mathf.Sin(2f * Mathf.PI * baseFrequency * t) * humAmount;
+                hum += Mathf.Sin(2f * Mathf.PI * (baseFrequency * 2.01f) * t) * humAmount * 0.3f;
+                float tick = 0f;
+                for (float start = 0.15f; start < duration; start += 0.52f)
+                {
+                    float local = t - start - (float)random.NextDouble() * 0.015f;
+                    if (local >= 0f && local < 0.035f)
+                    {
+                        tick += Mathf.Exp(-local * 90f) * ((float)random.NextDouble() * 2f - 1f) * tickAmount;
+                    }
+                }
+
+                data[i] = Mathf.Clamp(hum + tick, -0.35f, 0.35f);
+            }
+
+            var clip = AudioClip.Create(name, sampleCount, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateWaterDripLoop()
+        {
+            float duration = 3.4f;
+            int sampleCount = Mathf.CeilToInt(SampleRate * duration);
+            var data = new float[sampleCount];
+            var random = new System.Random(83);
+
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = i / (float)SampleRate;
+                float value = 0f;
+                for (float start = 0.55f; start < duration; start += 1.1f)
+                {
+                    float local = t - start - (float)random.NextDouble() * 0.08f;
+                    if (local >= 0f && local < 0.16f)
+                    {
+                        float envelope = Mathf.Exp(-local * 22f);
+                        value += Mathf.Sin(2f * Mathf.PI * 820f * local) * envelope * 0.08f;
+                        value += Mathf.Sin(2f * Mathf.PI * 410f * local) * envelope * 0.03f;
+                    }
+                }
+
+                data[i] = Mathf.Clamp(value, -0.32f, 0.32f);
+            }
+
+            var clip = AudioClip.Create("Sink Water Drips", sampleCount, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateFabricRoomTone(string name)
+        {
+            float duration = 4f;
+            int sampleCount = Mathf.CeilToInt(SampleRate * duration);
+            var data = new float[sampleCount];
+            var random = new System.Random(name.GetHashCode());
+
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = i / (float)SampleRate;
+                float noise = ((float)random.NextDouble() * 2f - 1f) * 0.006f;
+                float low = Mathf.Sin(2f * Mathf.PI * 38f * t) * 0.006f;
+                data[i] = Mathf.Clamp(noise + low, -0.2f, 0.2f);
+            }
+
+            var clip = AudioClip.Create($"{name} Soft Fabric Tone", sampleCount, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateObjectRoomTone(string name)
+        {
+            float duration = 3f;
+            int sampleCount = Mathf.CeilToInt(SampleRate * duration);
+            var data = new float[sampleCount];
+            var random = new System.Random(name.GetHashCode());
+
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = i / (float)SampleRate;
+                float creak = 0f;
+                for (float start = 0.9f; start < duration; start += 1.7f)
+                {
+                    float local = t - start;
+                    if (local >= 0f && local < 0.18f)
+                    {
+                        creak += Mathf.Sin(2f * Mathf.PI * 190f * local) * Mathf.Exp(-local * 16f) * 0.018f;
+                    }
+                }
+
+                data[i] = Mathf.Clamp(creak + ((float)random.NextDouble() * 2f - 1f) * 0.003f, -0.18f, 0.18f);
+            }
+
+            var clip = AudioClip.Create($"{name} Object Tone", sampleCount, 1, SampleRate, false);
             clip.SetData(data, 0);
             return clip;
         }
