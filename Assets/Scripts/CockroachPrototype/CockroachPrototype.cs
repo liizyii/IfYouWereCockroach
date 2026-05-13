@@ -32,6 +32,7 @@ namespace IfYouWereCockroach.Prototype
         private readonly List<PetController> pets = new List<PetController>();
         private readonly List<HideSpot> hideSpots = new List<HideSpot>();
         private readonly List<Rect> blockedFloorAreas = new List<Rect>();
+        private readonly Dictionary<string, Material> importedMaterialCache = new Dictionary<string, Material>();
         private readonly string[] foodNames =
         {
             "面包屑", "米饭粒", "苹果核", "糖渍", "肉渣", "饼干屑", "奶酪碎", "面条", "薯片", "果皮",
@@ -159,6 +160,7 @@ namespace IfYouWereCockroach.Prototype
             pets.Clear();
             hideSpots.Clear();
             blockedFloorAreas.Clear();
+            importedMaterialCache.Clear();
             dynamicFoodTimer = UnityEngine.Random.Range(10f, 16f);
 
             runRoot = new GameObject("Generated Apartment Run").transform;
@@ -1108,7 +1110,147 @@ namespace IfYouWereCockroach.Prototype
             {
                 renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
                 renderer.receiveShadows = true;
+                var sourceMaterials = renderer.sharedMaterials;
+                if (sourceMaterials != null && sourceMaterials.Length > 0)
+                {
+                    var runtimeMaterials = new Material[sourceMaterials.Length];
+                    for (int i = 0; i < sourceMaterials.Length; i++)
+                    {
+                        runtimeMaterials[i] = CreateImportedMaterial(sourceMaterials[i]);
+                    }
+
+                    renderer.materials = runtimeMaterials;
+                }
+                else
+                {
+                    renderer.material = CreateImportedMaterial(renderer.sharedMaterial);
+                }
             }
+        }
+
+        private Material CreateImportedMaterial(Material source)
+        {
+            string materialName = source != null ? source.name.Replace(" (Instance)", string.Empty) : "Imported Material";
+            if (importedMaterialCache.TryGetValue(materialName, out var cached))
+            {
+                return cached;
+            }
+
+            var material = new Material(Shader.Find("Standard"));
+            var baseColor = source != null && source.HasProperty("_Color") ? source.color : Color.white;
+            material.name = $"Runtime {materialName}";
+            material.color = baseColor;
+            material.mainTexture = CreateProceduralSurfaceTexture(materialName, baseColor);
+            material.mainTextureScale = new Vector2(1.8f, 1.8f);
+
+            string lower = materialName.ToLowerInvariant();
+            if (lower.Contains("metal") || lower.Contains("knife") || lower.Contains("pan"))
+            {
+                material.SetFloat("_Metallic", 0.45f);
+                material.SetFloat("_Glossiness", 0.42f);
+            }
+            else if (lower.Contains("glass") || lower.Contains("coffee") || lower.Contains("stain"))
+            {
+                material.SetFloat("_Glossiness", 0.55f);
+            }
+            else if (lower.Contains("fabric") || lower.Contains("blanket") || lower.Contains("pillow") || lower.Contains("cloth"))
+            {
+                material.SetFloat("_Glossiness", 0.08f);
+            }
+            else
+            {
+                material.SetFloat("_Glossiness", 0.22f);
+            }
+
+            importedMaterialCache[materialName] = material;
+            return material;
+        }
+
+        private static Texture2D CreateProceduralSurfaceTexture(string materialName, Color baseColor)
+        {
+            const int size = 96;
+            string lower = materialName.ToLowerInvariant();
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, true);
+            texture.wrapMode = TextureWrapMode.Repeat;
+            texture.filterMode = FilterMode.Bilinear;
+
+            int seed = Mathf.Abs(materialName.GetHashCode() % 997);
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float u = x / (float)(size - 1);
+                    float v = y / (float)(size - 1);
+                    Color color = ProceduralSurfaceColor(lower, baseColor, u, v, seed);
+                    texture.SetPixel(x, y, color);
+                }
+            }
+
+            texture.Apply(true, false);
+            return texture;
+        }
+
+        private static Color ProceduralSurfaceColor(string lowerName, Color baseColor, float u, float v, int seed)
+        {
+            float noise = Mathf.PerlinNoise(u * 8.5f + seed * 0.017f, v * 8.5f + seed * 0.013f);
+            if (lowerName.Contains("wood"))
+            {
+                float rings = Mathf.Sin((u * 18f + Mathf.PerlinNoise(v * 5f, seed) * 2.2f) * Mathf.PI);
+                float grain = Mathf.PerlinNoise(u * 24f + seed, v * 3.2f) * 0.35f + rings * 0.12f;
+                return Tint(baseColor, 0.78f + grain);
+            }
+
+            if (lowerName.Contains("fabric") || lowerName.Contains("blanket") || lowerName.Contains("pillow") || lowerName.Contains("cloth"))
+            {
+                float weave = (Mathf.Sin(u * 190f) + Mathf.Sin(v * 170f)) * 0.025f;
+                float fiber = Mathf.PerlinNoise(u * 36f + seed, v * 36f + seed) * 0.16f;
+                return Tint(baseColor, 0.86f + weave + fiber);
+            }
+
+            if (lowerName.Contains("stone") || lowerName.Contains("counter"))
+            {
+                float speckle = noise > 0.67f ? 0.22f : noise > 0.52f ? -0.08f : 0.04f;
+                return Tint(baseColor, 0.92f + speckle);
+            }
+
+            if (lowerName.Contains("tile") || lowerName.Contains("grout"))
+            {
+                bool seam = u < 0.035f || v < 0.035f || Mathf.Abs((u * 4f) % 1f) < 0.025f || Mathf.Abs((v * 3f) % 1f) < 0.025f;
+                return seam ? Tint(baseColor, 0.62f) : Tint(baseColor, 0.96f + noise * 0.08f);
+            }
+
+            if (lowerName.Contains("porcelain") || lowerName.Contains("sheet"))
+            {
+                return Tint(baseColor, 0.95f + noise * 0.08f);
+            }
+
+            if (lowerName.Contains("skin"))
+            {
+                return Tint(baseColor, 0.9f + noise * 0.12f);
+            }
+
+            if (lowerName.Contains("metal"))
+            {
+                float brushed = Mathf.Sin(v * 220f) * 0.025f + noise * 0.08f;
+                return Tint(baseColor, 0.82f + brushed);
+            }
+
+            if (lowerName.Contains("stain") || lowerName.Contains("crumb") || lowerName.Contains("coffee"))
+            {
+                float blotch = Mathf.PerlinNoise(u * 18f + seed, v * 18f + seed);
+                return Tint(baseColor, 0.72f + blotch * 0.42f);
+            }
+
+            return Tint(baseColor, 0.88f + noise * 0.16f);
+        }
+
+        private static Color Tint(Color color, float multiplier)
+        {
+            return new Color(
+                Mathf.Clamp01(color.r * multiplier),
+                Mathf.Clamp01(color.g * multiplier),
+                Mathf.Clamp01(color.b * multiplier),
+                color.a);
         }
 
         private void AddFurnitureFloorShadow(string name, Vector3 position, Vector3 scale)
