@@ -417,6 +417,69 @@ def build_human(mats):
     return r
 
 
+
+def build_trash_can(mats):
+    r = root("TrashCan_LowPoly")
+    cylinder("bin_body", (0, 0, 0.32), 0.28, 0.62, mats["bin_dark"], r, 18)
+    cylinder("bin_rim", (0, 0, 0.65), 0.31, 0.055, mats["metal_dark"], r, 18)
+    cylinder("inner_shadow", (0, 0, 0.69), 0.23, 0.035, mats["black"], r, 18)
+    cube("side_handle_left", (-0.3, 0, 0.42), (0.025, 0.08, 0.12), mats["metal"], r)
+    cube("side_handle_right", (0.3, 0, 0.42), (0.025, 0.08, 0.12), mats["metal"], r)
+    for i, angle in enumerate((0.0, 2.2, 4.1)):
+        x = math.cos(angle) * 0.18
+        y = math.sin(angle) * 0.18
+        cube(f"crumb_{i}", (x, y, 0.72), (0.06, 0.035, 0.025), mats["crumb"], r)
+    return r
+
+
+def build_cardboard_box(mats):
+    r = root("CardboardBox_LowPoly")
+    cube("box_base", (0, 0, 0.23), (0.46, 0.36, 0.22), mats["cardboard"], r)
+    cube("front_flap", (0, -0.38, 0.42), (0.48, 0.025, 0.18), mats["cardboard_light"], r)
+    cube("back_flap", (0, 0.38, 0.42), (0.48, 0.025, 0.18), mats["cardboard_light"], r)
+    cube("left_flap", (-0.48, 0, 0.42), (0.025, 0.36, 0.18), mats["cardboard_light"], r)
+    cube("tape", (0, -0.385, 0.49), (0.09, 0.012, 0.18), mats["paper"], r)
+    cube("side_mark", (0.2, -0.39, 0.24), (0.16, 0.01, 0.035), mats["wood_dark"], r)
+    return r
+
+
+def build_slipper(mats):
+    r = root("Slipper_LowPoly")
+    sphere("soft_sole", (0, 0, 0.055), (0.34, 0.16, 0.045), mats["slipper_blue"], r, 18, 6)
+    sphere("toe", (0, -0.08, 0.1), (0.28, 0.12, 0.055), mats["slipper_light"], r, 18, 6)
+    cube("strap_left", (-0.1, -0.04, 0.16), (0.045, 0.18, 0.025), mats["slipper_dark"], r)
+    cube("strap_right", (0.1, -0.04, 0.16), (0.045, 0.18, 0.025), mats["slipper_dark"], r)
+    return r
+
+
+def build_pipe_gap(mats):
+    r = root("PipeGap_LowPoly")
+    cube("wall_shadow", (0, 0, 0.35), (0.035, 0.42, 0.34), mats["black"], r)
+    cylinder("pipe_upper", (0.04, 0, 0.54), 0.08, 0.72, mats["metal"], r, 16, (math.pi / 2, 0, 0))
+    cylinder("pipe_lower", (0.04, 0, 0.18), 0.06, 0.62, mats["metal_dark"], r, 16, (math.pi / 2, 0, 0))
+    cube("dust_line", (0.07, -0.03, 0.05), (0.035, 0.32, 0.018), mats["crumb"], r)
+    return r
+
+
+def build_wall_crack(mats):
+    r = root("WallCrack_LowPoly")
+    cube("main_crack", (0, 0, 0), (0.035, 0.012, 0.46), mats["black"], r)
+    cube("left_branch", (-0.08, 0, 0.12), (0.025, 0.012, 0.26), mats["black"], r).rotation_euler[1] = 0.55
+    cube("right_branch", (0.08, 0, -0.11), (0.025, 0.012, 0.25), mats["black"], r).rotation_euler[1] = -0.45
+    cube("dust", (0.16, 0, -0.32), (0.11, 0.012, 0.035), mats["crumb"], r)
+    return r
+
+
+def build_scrap_pile(mats):
+    r = root("ScrapPile_LowPoly")
+    cylinder("stain", (0, 0, 0.018), 0.34, 0.035, mats["stain_red"], r, 18)
+    for i, angle in enumerate((0.0, 0.8, 1.7, 2.4, 3.2, 4.1, 5.4)):
+        x = math.cos(angle) * (0.08 + 0.035 * (i % 3))
+        y = math.sin(angle) * (0.07 + 0.03 * (i % 2))
+        sphere(f"scrap_{i}", (x, y, 0.08 + 0.015 * (i % 2)), (0.08, 0.055, 0.045), mats["crumb"], r, 10, 5)
+    cube("wrapper", (-0.22, 0.12, 0.055), (0.16, 0.08, 0.018), mats["paper_white"], r)
+    return r
+
 def main():
     os.makedirs(MODEL_DIR, exist_ok=True)
     os.makedirs(HUMAN_DIR, exist_ok=True)
@@ -478,6 +541,11 @@ def main():
         "pants": material("Pants", (0.12, 0.15, 0.19, 1)),
         "pants_light": material("Pants Highlight", (0.18, 0.22, 0.28, 1)),
         "shoe": material("Shoe", (0.04, 0.035, 0.03, 1)),
+        "bin_dark": material("Trash Bin Dark", (0.1, 0.13, 0.12, 1)),
+        "cardboard_light": material("Cardboard Highlight", (0.68, 0.49, 0.28, 1)),
+        "slipper_blue": material("Slipper Blue", (0.2, 0.3, 0.62, 1)),
+        "slipper_light": material("Slipper Highlight", (0.38, 0.52, 0.84, 1)),
+        "slipper_dark": material("Slipper Strap", (0.08, 0.13, 0.32, 1)),
     }
 
     models = {
@@ -494,7 +562,14 @@ def main():
         "Wardrobe_LowPoly.fbx": build_wardrobe(mats),
         "Desk_LowPoly.fbx": build_desk(mats),
         "Toilet_LowPoly.fbx": build_toilet(mats),
-    }
+
+        "TrashCan_LowPoly.fbx": build_trash_can(mats),
+        "CardboardBox_LowPoly.fbx": build_cardboard_box(mats),
+        "Slipper_LowPoly.fbx": build_slipper(mats),
+        "PipeGap_LowPoly.fbx": build_pipe_gap(mats),
+        "WallCrack_LowPoly.fbx": build_wall_crack(mats),
+        "ScrapPile_LowPoly.fbx": build_scrap_pile(mats),
+}
 
     human = build_human(mats)
 

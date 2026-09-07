@@ -22,6 +22,111 @@ namespace IfYouWereCockroach.Prototype
         }
     }
 
+
+    public enum DemoObjectiveStep
+    {
+        EatFood,
+        FindHideSpot,
+        LayEgg,
+        TriggerAndEscapeDetection,
+        EscapeDetection,
+        StageClear,
+        Dead
+    }
+
+    public static class DemoObjectivePlanner
+    {
+        public static DemoObjectiveStep SelectStep(int eatenFood, int targetFood, bool isHidden, int eggsLaid, int targetEggs, bool hasBeenDetected, bool escapedAfterDetection, bool requiresEscape, bool alive = true)
+        {
+            if (!alive)
+            {
+                return DemoObjectiveStep.Dead;
+            }
+
+            if (eatenFood < targetFood)
+            {
+                return DemoObjectiveStep.EatFood;
+            }
+
+            if (eggsLaid < targetEggs)
+            {
+                return isHidden ? DemoObjectiveStep.LayEgg : DemoObjectiveStep.FindHideSpot;
+            }
+
+            if (requiresEscape && !escapedAfterDetection)
+            {
+                return hasBeenDetected ? DemoObjectiveStep.EscapeDetection : DemoObjectiveStep.TriggerAndEscapeDetection;
+            }
+
+            return DemoObjectiveStep.StageClear;
+        }
+
+        public static string AreaNameForPosition(float x, float z)
+        {
+            if (x < -2f && z > 1f)
+            {
+                return "厨房";
+            }
+
+            if (x < -2f && z <= 1f)
+            {
+                return "卫生间";
+            }
+
+            if (z < -1f)
+            {
+                return "卧室";
+            }
+
+            return "客厅";
+        }
+
+        public static string ObjectiveText(DemoObjectiveStep step, int foodProgress, int foodGoal, int availableEggs)
+        {
+            switch (step)
+            {
+                case DemoObjectiveStep.EatFood:
+                    return $"闻着食物残渣前进：{foodProgress}/{foodGoal}";
+                case DemoObjectiveStep.FindHideSpot:
+                    return "钻到家具底下或绿色阴影里，准备产卵";
+                case DemoObjectiveStep.LayEgg:
+                    return availableEggs > 0 ? "按 E 在隐藏处产卵" : "再吃一些食物获得产卵机会";
+                case DemoObjectiveStep.TriggerAndEscapeDetection:
+                    return "最后目标：引起一次注意，然后甩开追捕";
+                case DemoObjectiveStep.EscapeDetection:
+                    return "已经被发现：立刻逃远或躲进家具阴影";
+                case DemoObjectiveStep.StageClear:
+                    return "本关已完成，下一关正在刷新更难目标";
+                case DemoObjectiveStep.Dead:
+                    return "本局结束，按 R 重新开始";
+                default:
+                    return "继续求生";
+            }
+        }
+
+        public static string RouteHint(DemoObjectiveStep step, string areaName)
+        {
+            switch (step)
+            {
+                case DemoObjectiveStep.EatFood:
+                    return areaName == "厨房" ? "厨房食物最多，沿黄色气味点搜桌脚和台面" : "沿黄色气味点往厨房和餐桌移动";
+                case DemoObjectiveStep.FindHideSpot:
+                    return "绿色地面轮廓代表安全阴影，沙发、床、餐桌都能藏";
+                case DemoObjectiveStep.LayEgg:
+                    return "保持隐藏，按 E 留下卵囊；移动或暴露会中断机会";
+                case DemoObjectiveStep.TriggerAndEscapeDetection:
+                    return "靠近人类视线边缘制造风险，立刻转进沙发或床下";
+                case DemoObjectiveStep.EscapeDetection:
+                    return "远离脚步声，躲满几秒即可甩开追捕";
+                case DemoObjectiveStep.StageClear:
+                    return "目标完成，新的食物和危险会刷新";
+                case DemoObjectiveStep.Dead:
+                    return "按 R 从新的出生点再来一局";
+                default:
+                    return "观察声音和警觉值，低噪音移动更安全";
+            }
+        }
+    }
     public sealed class CockroachGameManager : MonoBehaviour
     {
         private const string LeaderboardKey = "IfYouWereCockroach.LocalLeaderboard";
@@ -45,8 +150,12 @@ namespace IfYouWereCockroach.Prototype
         private Text tasksText;
         private Text leaderboardText;
         private Text eventText;
+        private Text objectiveText;
+        private Text routeText;
+        private Text resultText;
         private Text challengeText;
         private GameObject challengePanel;
+        private GameObject resultPanel;
         private GameObject eggHintObject;
         private float survivalTime;
         private float eventMessageTimer;
@@ -68,6 +177,7 @@ namespace IfYouWereCockroach.Prototype
         private bool escapedAfterDetection;
         private bool challengePromptActive;
         private bool challengeOfferShown;
+        private string lastRunEndReason = string.Empty;
         private System.Random random;
 
         public static CockroachGameManager Instance { get; private set; }
@@ -154,7 +264,7 @@ namespace IfYouWereCockroach.Prototype
             challengeOfferShown = false;
             familyCount = random.Next(1, 5);
             targetFoodCount = 5;
-            targetEggCount = 0;
+            targetEggCount = 1;
             foodItems.Clear();
             humans.Clear();
             pets.Clear();
@@ -170,7 +280,7 @@ namespace IfYouWereCockroach.Prototype
             BuildHumans();
             BuildCamera();
             BuildUi();
-            ShowEvent($"第 1 关开始：开局保护 7 秒，先吃到 {targetFoodCount} 种食物");
+            ShowEvent("第 1 关开始：吃食物、找隐藏点、产卵，再甩开一次追捕");
             UpdateUi();
         }
 
@@ -350,6 +460,8 @@ namespace IfYouWereCockroach.Prototype
             AddFurniture("电脑桌", new Vector3(1.0f, 0.48f, -5.6f), new Vector3(1.45f, 0.96f, 0.85f), new Color(0.38f, 0.25f, 0.16f), true, "Models/Environment/Desk_LowPoly");
             AddFurniture("马桶", new Vector3(-4.8f, 0.34f, -5.65f), new Vector3(0.9f, 0.68f, 0.9f), new Color(0.9f, 0.9f, 0.86f), false, "Models/Environment/Toilet_LowPoly");
 
+            BuildRouteLandmarks();
+
             int decorationCount = random.Next(5, 10);
             for (int i = 0; i < decorationCount; i++)
             {
@@ -380,6 +492,88 @@ namespace IfYouWereCockroach.Prototype
             BuildAmbientAudio();
         }
 
+
+        private void BuildRouteLandmarks()
+        {
+            AddScentTrail(new Vector3(-7.1f, 0.04f, 5.2f), new Vector3(-3.1f, 0.04f, 2.6f), 8);
+            AddScentTrail(new Vector3(-3.1f, 0.04f, 2.6f), new Vector3(4.5f, 0.04f, 2.3f), 10);
+            AddScentTrail(new Vector3(4.5f, 0.04f, 2.3f), new Vector3(4.9f, 0.04f, -4.2f), 9);
+
+            AddRouteProp("路线垃圾桶", new Vector3(-3.25f, 0.33f, 5.45f), new Vector3(0.7f, 0.72f, 0.7f), new Color(0.13f, 0.17f, 0.16f), "Models/Environment/TrashCan_LowPoly");
+            AddRouteProp("客厅纸箱", new Vector3(1.15f, 0.22f, 4.95f), new Vector3(0.95f, 0.44f, 0.75f), new Color(0.55f, 0.36f, 0.18f), "Models/Environment/CardboardBox_LowPoly", Quaternion.Euler(0f, 18f, 0f));
+            AddRouteProp("拖鞋路标", new Vector3(2.1f, 0.08f, 0.9f), new Vector3(0.7f, 0.12f, 0.34f), new Color(0.22f, 0.33f, 0.62f), "Models/Environment/Slipper_LowPoly", Quaternion.Euler(0f, -28f, 0f));
+            AddRouteProp("卫生间管道缝", new Vector3(-8.72f, 0.35f, -4.25f), new Vector3(0.08f, 0.7f, 1.05f), new Color(0.08f, 0.09f, 0.08f), "Models/Environment/PipeGap_LowPoly");
+            AddRouteProp("卧室墙裂", new Vector3(4.9f, 1.05f, -6.78f), new Vector3(1.15f, 0.04f, 0.7f), new Color(0.09f, 0.08f, 0.07f), "Models/Environment/WallCrack_LowPoly");
+            AddRouteProp("大块食物残渣", new Vector3(-2.9f, 0.11f, 2.1f), new Vector3(1.0f, 0.22f, 0.75f), new Color(0.83f, 0.58f, 0.22f), "Models/Environment/ScrapPile_LowPoly", Quaternion.Euler(0f, 32f, 0f));
+        }
+
+        private void AddScentTrail(Vector3 start, Vector3 end, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                float t = count <= 1 ? 0f : i / (float)(count - 1);
+                var position = Vector3.Lerp(start, end, t);
+                position.x += Mathf.Sin(t * Mathf.PI * 5f) * 0.12f;
+                position.z += Mathf.Cos(t * Mathf.PI * 4f) * 0.08f;
+                var marker = CreateWorldVisual("黄色气味点", PrimitiveType.Cylinder, position, new Vector3(0.16f + t * 0.05f, 0.012f, 0.16f + t * 0.05f), new Color(0.95f, 0.76f, 0.24f));
+                if (marker.TryGetComponent<Renderer>(out var renderer))
+                {
+                    renderer.material.color = new Color(0.95f, 0.76f, 0.24f, 0.82f);
+                }
+            }
+        }
+
+        private void AddRouteProp(string name, Vector3 position, Vector3 scale, Color color, string modelResourcePath, Quaternion? rotation = null)
+        {
+            var anchor = new GameObject(name);
+            anchor.transform.SetParent(runRoot);
+            anchor.transform.position = position;
+            anchor.transform.localRotation = rotation ?? Quaternion.identity;
+            anchor.transform.localScale = scale;
+
+            if (TryAttachRouteModel(anchor.transform, modelResourcePath, position, scale, rotation ?? Quaternion.identity))
+            {
+                return;
+            }
+
+            Destroy(anchor);
+            var fallback = CreateWorldVisual(name, PrimitiveType.Cube, position, scale, color, rotation);
+            if (name.Contains("管道缝"))
+            {
+                CreateWorldVisual("管道缝高光", PrimitiveType.Cylinder, position + new Vector3(0.03f, 0f, 0f), new Vector3(0.16f, 0.38f, 0.16f), new Color(0.38f, 0.4f, 0.36f), Quaternion.Euler(90f, 0f, 0f));
+            }
+            else if (name.Contains("墙裂"))
+            {
+                fallback.transform.localScale = scale;
+                CreateWorldVisual("墙裂支线", PrimitiveType.Cube, position + new Vector3(0.22f, -0.1f, 0.02f), new Vector3(0.55f, 0.035f, 0.05f), color, Quaternion.Euler(0f, 0f, -24f));
+            }
+            else if (name.Contains("食物"))
+            {
+                for (int i = 0; i < 7; i++)
+                {
+                    CreateWorldVisual("醒目残渣颗粒", PrimitiveType.Sphere, position + new Vector3(UnityEngine.Random.Range(-0.42f, 0.42f), 0.1f, UnityEngine.Random.Range(-0.3f, 0.3f)), Vector3.one * UnityEngine.Random.Range(0.08f, 0.16f), color * UnityEngine.Random.Range(0.85f, 1.18f));
+                }
+            }
+        }
+
+        private bool TryAttachRouteModel(Transform parent, string modelResourcePath, Vector3 targetCenter, Vector3 targetScale, Quaternion rotation)
+        {
+            var model = Resources.Load<GameObject>(modelResourcePath);
+            if (model == null)
+            {
+                return false;
+            }
+
+            var visual = Instantiate(model, runRoot);
+            visual.name = parent.name + " Model";
+            visual.transform.position = targetCenter;
+            visual.transform.localRotation = rotation * ImportedModelUprightRotation;
+            visual.transform.localScale = Vector3.one;
+            PrepareImportedModel(visual);
+            FitImportedFurnitureModel(visual, targetCenter, targetScale);
+            Destroy(parent.gameObject);
+            return true;
+        }
         private void SpawnFoodItems(int count)
         {
             int existing = foodItems.Count;
@@ -573,17 +767,23 @@ namespace IfYouWereCockroach.Prototype
 
             var statusPanel = CreatePanel(canvasObject.transform, "Status Panel", new Vector2(18f, -18f), TextAnchor.UpperLeft, new Vector2(590f, 178f), new Color(0f, 0f, 0f, 0.68f));
             var tasksPanel = CreatePanel(canvasObject.transform, "Tasks Panel", new Vector2(18f, -214f), TextAnchor.UpperLeft, new Vector2(650f, 236f), new Color(0f, 0f, 0f, 0.64f));
-            var boardPanel = CreatePanel(canvasObject.transform, "Leaderboard Panel", new Vector2(-18f, -18f), TextAnchor.UpperRight, new Vector2(360f, 178f), new Color(0f, 0f, 0f, 0.52f));
+            var routePanel = CreatePanel(canvasObject.transform, "Route Panel", new Vector2(-18f, -18f), TextAnchor.UpperRight, new Vector2(430f, 270f), new Color(0f, 0f, 0f, 0.56f));
+            var objectivePanel = CreatePanel(canvasObject.transform, "Objective Banner", new Vector2(0f, -22f), TextAnchor.UpperCenter, new Vector2(760f, 86f), new Color(0.04f, 0.05f, 0.035f, 0.68f));
 
             statusText = CreateText(statusPanel.transform, "Status", new Vector2(18f, -16f), TextAnchor.UpperLeft, 28, new Vector2(554f, 146f));
             tasksText = CreateText(tasksPanel.transform, "Tasks", new Vector2(18f, -16f), TextAnchor.UpperLeft, 26, new Vector2(614f, 204f));
-            leaderboardText = CreateText(boardPanel.transform, "Leaderboard", new Vector2(-18f, -16f), TextAnchor.UpperRight, 22, new Vector2(324f, 146f));
+            routeText = CreateText(routePanel.transform, "Route", new Vector2(-18f, -16f), TextAnchor.UpperRight, 22, new Vector2(394f, 238f));
+            objectiveText = CreateText(objectivePanel.transform, "Objective", Vector2.zero, TextAnchor.MiddleCenter, 30, new Vector2(710f, 62f));
             eventText = CreateText(canvasObject.transform, "Event", new Vector2(0f, 56f), TextAnchor.LowerCenter, 30, new Vector2(1100f, 90f));
+            leaderboardText = null;
+
             challengePanel = CreatePanel(canvasObject.transform, "Challenge Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(760f, 360f), new Color(0f, 0f, 0f, 0.82f)).gameObject;
             challengeText = CreateText(challengePanel.transform, "Challenge Text", new Vector2(0f, 0f), TextAnchor.MiddleCenter, 28, new Vector2(700f, 310f));
+            resultPanel = CreatePanel(canvasObject.transform, "Run Result Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(760f, 420f), new Color(0f, 0f, 0f, 0.84f)).gameObject;
+            resultText = CreateText(resultPanel.transform, "Run Result Text", Vector2.zero, TextAnchor.MiddleCenter, 28, new Vector2(700f, 360f));
             challengePanel.SetActive(false);
+            resultPanel.SetActive(false);
         }
-
         private Image CreatePanel(Transform parent, string name, Vector2 anchoredPosition, TextAnchor anchor, Vector2 size, Color color)
         {
             var panelObject = new GameObject(name);
@@ -591,43 +791,49 @@ namespace IfYouWereCockroach.Prototype
             var rect = panelObject.AddComponent<RectTransform>();
             rect.sizeDelta = size;
 
-            if (anchor == TextAnchor.UpperRight)
-            {
-                rect.anchorMin = new Vector2(1f, 1f);
-                rect.anchorMax = new Vector2(1f, 1f);
-                rect.pivot = new Vector2(1f, 1f);
-            }
-            else if (anchor == TextAnchor.MiddleCenter)
-            {
-                rect.anchorMin = new Vector2(0.5f, 0.5f);
-                rect.anchorMax = new Vector2(0.5f, 0.5f);
-                rect.pivot = new Vector2(0.5f, 0.5f);
-            }
-            else
-            {
-                rect.anchorMin = new Vector2(0f, 1f);
-                rect.anchorMax = new Vector2(0f, 1f);
-                rect.pivot = new Vector2(0f, 1f);
-            }
-
+            ApplyAnchor(rect, anchor);
             rect.anchoredPosition = anchoredPosition;
             var image = panelObject.AddComponent<Image>();
             image.color = color;
             return image;
         }
-
         private Text CreateText(Transform parent, string name, Vector2 anchoredPosition, TextAnchor anchor, int fontSize, Vector2 size)
         {
             var textObject = new GameObject(name);
             textObject.transform.SetParent(parent, false);
             var rect = textObject.AddComponent<RectTransform>();
             rect.sizeDelta = size;
+            ApplyAnchor(rect, anchor);
+            rect.anchoredPosition = anchoredPosition;
 
+            var text = textObject.AddComponent<Text>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
+            text.fontSize = fontSize;
+            text.fontStyle = FontStyle.Bold;
+            text.lineSpacing = 1.02f;
+            text.alignment = anchor;
+            text.color = Color.white;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
+            var outline = textObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.88f);
+            outline.effectDistance = new Vector2(2f, -2f);
+            return text;
+        }
+
+        private static void ApplyAnchor(RectTransform rect, TextAnchor anchor)
+        {
             if (anchor == TextAnchor.UpperRight)
             {
                 rect.anchorMin = new Vector2(1f, 1f);
                 rect.anchorMax = new Vector2(1f, 1f);
                 rect.pivot = new Vector2(1f, 1f);
+            }
+            else if (anchor == TextAnchor.UpperCenter)
+            {
+                rect.anchorMin = new Vector2(0.5f, 1f);
+                rect.anchorMax = new Vector2(0.5f, 1f);
+                rect.pivot = new Vector2(0.5f, 1f);
             }
             else if (anchor == TextAnchor.LowerCenter)
             {
@@ -647,23 +853,7 @@ namespace IfYouWereCockroach.Prototype
                 rect.anchorMax = new Vector2(0f, 1f);
                 rect.pivot = new Vector2(0f, 1f);
             }
-
-            rect.anchoredPosition = anchoredPosition;
-            var text = textObject.AddComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
-            text.fontSize = fontSize;
-            text.fontStyle = FontStyle.Bold;
-            text.lineSpacing = 1.02f;
-            text.alignment = anchor;
-            text.color = Color.white;
-            text.horizontalOverflow = HorizontalWrapMode.Wrap;
-            text.verticalOverflow = VerticalWrapMode.Truncate;
-            var outline = textObject.AddComponent<Outline>();
-            outline.effectColor = new Color(0f, 0f, 0f, 0.88f);
-            outline.effectDistance = new Vector2(2f, -2f);
-            return text;
         }
-
         private GameObject CreatePrimitive(string name, PrimitiveType type, Vector3 position, Vector3 scale, Color color)
         {
             var gameObject = GameObject.CreatePrimitive(type);
@@ -1725,7 +1915,7 @@ namespace IfYouWereCockroach.Prototype
             stageStartEaten = foodItems.Count(food => food.Eaten);
             stageStartEggs = eggsLaid;
             targetFoodCount = stageStartEaten + 5 + challengeLevel * 2;
-            targetEggCount = stageStartEggs + Mathf.Max(0, challengeLevel / 2);
+            targetEggCount = stageStartEggs + 1 + Mathf.Max(0, challengeLevel / 2);
             escapedAfterDetection = false;
             hasBeenDetected = false;
             challengeOfferShown = false;
@@ -1753,7 +1943,7 @@ namespace IfYouWereCockroach.Prototype
 
         private bool RequiresEscapeThisStage()
         {
-            return challengeLevel >= 1;
+            return true;
         }
 
         private void UpdateUi()
@@ -1769,6 +1959,8 @@ namespace IfYouWereCockroach.Prototype
 
             int eaten = foodItems.Count(food => food.Eaten);
             int availableEggs = foodItems.Count(food => food.Eaten) / 5 - eggsLaid;
+            UpdateObjectiveAndRouteUi(eaten, availableEggs);
+            UpdateResultPanel(eaten);
             if (statusText != null)
             {
                 string state = alive ? "存活中" : "已死亡";
@@ -1818,6 +2010,62 @@ namespace IfYouWereCockroach.Prototype
             }
         }
 
+
+        private void UpdateObjectiveAndRouteUi(int eaten, int availableEggs)
+        {
+            int stageFoodGoal = Mathf.Max(1, targetFoodCount - stageStartEaten);
+            int stageFoodProgress = Mathf.Clamp(eaten - stageStartEaten, 0, stageFoodGoal);
+            bool hidden = player != null && player.IsHidden;
+            string areaName = player != null ? DemoObjectivePlanner.AreaNameForPosition(player.transform.position.x, player.transform.position.z) : "未知区域";
+            var step = DemoObjectivePlanner.SelectStep(eaten, targetFoodCount, hidden, eggsLaid, targetEggCount, hasBeenDetected, escapedAfterDetection, RequiresEscapeThisStage(), alive);
+
+            if (objectiveText != null)
+            {
+                objectiveText.text = DemoObjectivePlanner.ObjectiveText(step, stageFoodProgress, stageFoodGoal, Mathf.Max(0, availableEggs));
+                objectiveText.color = step == DemoObjectiveStep.EscapeDetection ? new Color(1f, 0.45f, 0.32f) : Color.white;
+            }
+
+            if (routeText != null)
+            {
+                var scores = LoadScores();
+                string scoreText = scores.Count == 0
+                    ? "暂无记录"
+                    : string.Join("\n", scores.Take(3).Select((score, index) => $"{index + 1}. {score.ClearedStages}关 {FormatTime(score.Seconds)}"));
+                routeText.text =
+                    $"当前位置：{areaName}\n" +
+                    $"路线提示：{DemoObjectivePlanner.RouteHint(step, areaName)}\n\n" +
+                    "操作\n" +
+                    "WASD 移动  鼠标转向\n" +
+                    "Shift 疾跑  Space 跳跃\n" +
+                    "E 在隐藏处产卵  R 重开\n\n" +
+                    "本地最佳\n" + scoreText;
+            }
+        }
+
+        private void UpdateResultPanel(int eaten)
+        {
+            if (resultPanel == null || resultText == null)
+            {
+                return;
+            }
+
+            bool show = !alive;
+            resultPanel.SetActive(show);
+            if (!show)
+            {
+                return;
+            }
+
+            string reason = string.IsNullOrWhiteSpace(lastRunEndReason) ? "被家里的危险抓住了" : lastRunEndReason;
+            resultText.text =
+                "本局结束\n\n" +
+                $"原因：{reason}\n" +
+                $"生存时间：{FormatTime(survivalTime)}\n" +
+                $"吃到食物：{eaten}\n" +
+                $"产卵次数：{eggsLaid}\n" +
+                $"通关阶段：{challengeLevel}\n\n" +
+                "按 R 重新开始";
+        }
         private static string TaskLine(bool complete, string text)
         {
             return $"{(complete ? "[完成]" : "[ ]")} {text}\n";
