@@ -29,4 +29,28 @@ public sealed class CockroachUiCopyTests
         StringAssert.Contains("E", controls);
         StringAssert.Contains("Esc", controls);
     }
+
+    [Test]
+    public void SideMissionCopyCarriesCurrentObjectiveWithoutCenterBanner()
+    {
+        MethodInfo method = typeof(DemoObjectivePlanner).GetMethod("SideMissionText", BindingFlags.Public | BindingFlags.Static);
+        Assert.NotNull(method);
+
+        string copy = (string)method.Invoke(null, new object[]
+        {
+            DemoObjectiveStep.LayEgg,
+            2,
+            5,
+            false,
+            1,
+            1,
+            true,
+            1
+        });
+
+        StringAssert.Contains("当前任务", copy);
+        StringAssert.Contains("Current", copy);
+        StringAssert.Contains("产卵", copy);
+        StringAssert.Contains("Lay egg", copy);
+    }
 }

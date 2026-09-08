@@ -16,10 +16,33 @@ def clear_scene():
     bpy.ops.object.delete()
 
 
-def material(name, color):
+def material(name, color, roughness=0.72):
     mat = bpy.data.materials.new(name)
     mat.diffuse_color = color
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf is not None:
+        bsdf.inputs["Base Color"].default_value = color
+        bsdf.inputs["Roughness"].default_value = roughness
+        bsdf.inputs["Metallic"].default_value = 0.0
     return mat
+
+
+def soften(obj, bevel_width=0.0, bevel_segments=1):
+    try:
+        bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+        bpy.ops.object.shade_smooth()
+        obj.select_set(False)
+    except RuntimeError:
+        pass
+
+    if bevel_width > 0.0:
+        bevel = obj.modifiers.new("cartoon soft bevel", "BEVEL")
+        bevel.width = bevel_width
+        bevel.segments = bevel_segments
+        obj.modifiers.new("cartoon weighted normals", "WEIGHTED_NORMAL")
+    return obj
 
 
 def add_uv_sphere(name, location, scale, mat, segments=18, rings=9):
@@ -28,7 +51,7 @@ def add_uv_sphere(name, location, scale, mat, segments=18, rings=9):
     obj.name = name
     obj.scale = scale
     obj.data.materials.append(mat)
-    return obj
+    return soften(obj)
 
 
 def add_cylinder_between(name, start, end, radius, mat, vertices=8):
@@ -46,78 +69,94 @@ def add_cylinder_between(name, start, end, radius, mat, vertices=8):
     direction = mathutils.Vector((dx, dy, dz)).normalized()
     quat = direction.to_track_quat("Z", "Y")
     obj.rotation_euler = quat.to_euler()
-    return obj
+    return soften(obj, radius * 0.18, 1)
 
 
-def add_leg(name, side, y, mat):
-    hip = (0.15 * side, y, 0.09)
-    knee = (0.35 * side, y + 0.025, 0.0)
-    ankle = (0.56 * side, y + 0.075, -0.07)
-    foot = (0.75 * side, y + 0.13, -0.085)
-    upper = add_cylinder_between(f"{name}_upper", hip, knee, 0.017, mat, 7)
-    mid = add_cylinder_between(f"{name}_middle", knee, ankle, 0.014, mat, 7)
-    lower = add_cylinder_between(f"{name}_lower", ankle, foot, 0.01, mat, 7)
-    claw = add_cylinder_between(f"{name}_claw", foot, (foot[0] + 0.05 * side, foot[1] + 0.05, foot[2] - 0.01), 0.006, mat, 6)
-    return [upper, mid, lower, claw]
-
-
-def add_antenna(name, side, mat):
-    base = (0.075 * side, 0.64, 0.15)
-    mid = (0.25 * side, 0.86, 0.24)
-    tip = (0.52 * side, 1.08, 0.22)
+def add_leg(name, side, y, mat, foot_mat):
+    hip = (0.13 * side, y, 0.1)
+    knee = (0.3 * side, y + 0.015, 0.03)
+    ankle = (0.47 * side, y + 0.055, -0.025)
+    foot = (0.57 * side, y + 0.1, -0.038)
     return [
-        add_cylinder_between(f"{name}_base", base, mid, 0.011, mat, 7),
-        add_cylinder_between(f"{name}_tip", mid, tip, 0.007, mat, 7),
+        add_cylinder_between(f"{name}_upper", hip, knee, 0.021, mat, 8),
+        add_cylinder_between(f"{name}_middle", knee, ankle, 0.018, mat, 8),
+        add_cylinder_between(f"{name}_lower", ankle, foot, 0.014, mat, 8),
+        add_uv_sphere(f"{name}_toe_pad", foot, (0.048, 0.032, 0.018), foot_mat, 10, 5),
     ]
 
 
-def add_plate(name, location, scale, mat):
+def add_antenna(name, side, mat, tip_mat):
+    base = (0.1 * side, 0.62, 0.22)
+    mid = (0.24 * side, 0.83, 0.33)
+    tip = (0.42 * side, 1.03, 0.34)
+    return [
+        add_cylinder_between(f"{name}_base", base, mid, 0.012, mat, 8),
+        add_cylinder_between(f"{name}_tip", mid, tip, 0.008, mat, 8),
+        add_uv_sphere(f"{name}_round_tip", tip, (0.026, 0.026, 0.026), tip_mat, 10, 5),
+    ]
+
+
+def add_plate(name, location, scale, mat, bevel_width=0.025):
     bpy.ops.mesh.primitive_cube_add(size=1, location=location)
     obj = bpy.context.object
     obj.name = name
     obj.scale = scale
     obj.data.materials.append(mat)
-    bevel = obj.modifiers.new("soft bevel", "BEVEL")
-    bevel.width = 0.025
-    bevel.segments = 2
-    obj.modifiers.new("weighted normals", "WEIGHTED_NORMAL")
-    return obj
+    return soften(obj, bevel_width, 2)
+
+
+def add_eye(name, side, white_mat, pupil_mat, shine_mat):
+    white = add_uv_sphere(f"{name}_white", (0.062 * side, 0.65, 0.175), (0.044, 0.032, 0.034), white_mat, 16, 8)
+    pupil = add_uv_sphere(f"{name}_pupil", (0.072 * side, 0.675, 0.18), (0.017, 0.01, 0.017), pupil_mat, 12, 6)
+    shine = add_uv_sphere(f"{name}_sparkle", (0.078 * side, 0.682, 0.192), (0.006, 0.004, 0.006), shine_mat, 8, 4)
+    return [white, pupil, shine]
 
 
 def build_cockroach():
-    shell = material("Glossy Chestnut Shell", (0.18, 0.075, 0.025, 1.0))
-    shell_dark = material("Dark Shell Edges", (0.075, 0.035, 0.017, 1.0))
-    shell_highlight = material("Amber Shell Highlights", (0.46, 0.19, 0.055, 1.0))
-    belly = material("Warm Brown Belly", (0.25, 0.12, 0.045, 1.0))
-    leg_mat = material("Dark Jointed Legs", (0.045, 0.025, 0.014, 1.0))
-    eye_mat = material("Black Eyes", (0.005, 0.004, 0.003, 1.0))
+    shell = material("Cartoon Caramel Shell", (0.72, 0.36, 0.12, 1.0))
+    shell_shadow = material("Soft Cocoa Outline", (0.25, 0.13, 0.055, 1.0))
+    shell_highlight = material("Honey Cream Highlights", (0.98, 0.68, 0.28, 1.0))
+    belly = material("Warm Biscuit Belly", (0.82, 0.46, 0.2, 1.0))
+    leg_mat = material("Rounded Cocoa Legs", (0.31, 0.17, 0.08, 1.0))
+    foot_mat = material("Soft Toe Pads", (0.55, 0.3, 0.14, 1.0))
+    eye_white = material("Big Eye Whites", (0.98, 0.95, 0.88, 1.0))
+    pupil = material("Friendly Navy Pupils", (0.025, 0.05, 0.09, 1.0))
+    shine = material("Eye Sparkles", (1.0, 1.0, 0.92, 1.0))
+    blush = material("Tiny Peach Cheeks", (1.0, 0.48, 0.35, 1.0))
 
-    body = add_uv_sphere("abdomen", (0, -0.13, 0.105), (0.25, 0.5, 0.105), shell, 22, 10)
-    thorax = add_uv_sphere("thorax", (0, 0.28, 0.13), (0.205, 0.265, 0.105), belly, 20, 9)
-    head = add_uv_sphere("head", (0, 0.56, 0.14), (0.14, 0.13, 0.08), shell_dark, 18, 8)
+    body = add_uv_sphere("round_abdomen", (0, -0.13, 0.115), (0.285, 0.51, 0.14), shell, 24, 12)
+    thorax = add_uv_sphere("squishy_thorax", (0, 0.29, 0.135), (0.22, 0.275, 0.12), belly, 22, 10)
+    head = add_uv_sphere("friendly_head", (0, 0.56, 0.15), (0.155, 0.14, 0.095), shell, 20, 10)
 
-    left_wing = add_plate("left_wing_cover", (-0.07, -0.12, 0.205), (0.095, 0.39, 0.014), shell_highlight)
-    right_wing = add_plate("right_wing_cover", (0.07, -0.12, 0.205), (0.095, 0.39, 0.014), shell_highlight)
-    center_ridge = add_plate("center_shell_ridge", (0, -0.12, 0.224), (0.014, 0.41, 0.014), shell_dark)
-    pronotum = add_plate("neck_shield", (0, 0.38, 0.215), (0.17, 0.1, 0.018), shell_highlight)
+    left_wing = add_plate("left_caramel_wing_cover", (-0.072, -0.12, 0.245), (0.095, 0.39, 0.016), shell_highlight, 0.035)
+    right_wing = add_plate("right_caramel_wing_cover", (0.072, -0.12, 0.245), (0.095, 0.39, 0.016), shell_highlight, 0.035)
+    center_ridge = add_plate("soft_center_shell_ridge", (0, -0.12, 0.266), (0.012, 0.4, 0.012), shell_shadow, 0.012)
+    pronotum = add_plate("rounded_neck_shield", (0, 0.38, 0.24), (0.17, 0.1, 0.018), shell_highlight, 0.03)
 
-    segment_parts = []
-    for index, y in enumerate((-0.45, -0.31, -0.17, -0.03, 0.11), start=1):
-        segment_parts.append(add_plate(f"abdomen_segment_{index}", (0, y, 0.226), (0.22 - index * 0.01, 0.012, 0.012), shell_dark))
+    parts = [body, thorax, head, left_wing, right_wing, center_ridge, pronotum]
 
-    add_uv_sphere("left_eye", (-0.062, 0.655, 0.168), (0.027, 0.023, 0.019), eye_mat, 10, 5)
-    add_uv_sphere("right_eye", (0.062, 0.655, 0.168), (0.027, 0.023, 0.019), eye_mat, 10, 5)
-    left_mandible = add_cylinder_between("left_mandible", (-0.04, 0.66, 0.11), (-0.12, 0.73, 0.09), 0.008, leg_mat, 6)
-    right_mandible = add_cylinder_between("right_mandible", (0.04, 0.66, 0.11), (0.12, 0.73, 0.09), 0.008, leg_mat, 6)
+    for index, y in enumerate((-0.42, -0.27, -0.12, 0.03), start=1):
+        width = 0.22 - index * 0.018
+        parts.append(add_plate(f"soft_abdomen_stripe_{index}", (0, y, 0.266), (width, 0.01, 0.011), shell_shadow, 0.008))
 
-    parts = [body, thorax, head, left_wing, right_wing, center_ridge, pronotum, left_mandible, right_mandible]
-    parts.extend(segment_parts)
-    for idx, y in enumerate((-0.18, 0.08, 0.34), start=1):
-        parts.extend(add_leg(f"left_leg_{idx}", -1, y, leg_mat))
-        parts.extend(add_leg(f"right_leg_{idx}", 1, y, leg_mat))
+    for index, (x, y) in enumerate(((-0.12, -0.32), (0.11, -0.22), (-0.08, 0.02), (0.1, 0.12)), start=1):
+        parts.append(add_uv_sphere(f"honey_spot_{index}", (x, y, 0.282), (0.022, 0.03, 0.009), shell_highlight, 10, 5))
 
-    parts.extend(add_antenna("left_antenna", -1, leg_mat))
-    parts.extend(add_antenna("right_antenna", 1, leg_mat))
+    parts.extend(add_eye("left_eye", -1, eye_white, pupil, shine))
+    parts.extend(add_eye("right_eye", 1, eye_white, pupil, shine))
+    parts.append(add_uv_sphere("left_blush_dot", (-0.095, 0.61, 0.14), (0.018, 0.012, 0.008), blush, 8, 4))
+    parts.append(add_uv_sphere("right_blush_dot", (0.095, 0.61, 0.14), (0.018, 0.012, 0.008), blush, 8, 4))
+
+    smile_left = add_cylinder_between("tiny_smile_left", (-0.035, 0.67, 0.12), (0, 0.69, 0.112), 0.0045, shell_shadow, 6)
+    smile_right = add_cylinder_between("tiny_smile_right", (0, 0.69, 0.112), (0.035, 0.67, 0.12), 0.0045, shell_shadow, 6)
+    parts.extend([smile_left, smile_right])
+
+    for idx, y in enumerate((-0.17, 0.08, 0.33), start=1):
+        parts.extend(add_leg(f"left_stubby_leg_{idx}", -1, y, leg_mat, foot_mat))
+        parts.extend(add_leg(f"right_stubby_leg_{idx}", 1, y, leg_mat, foot_mat))
+
+    parts.extend(add_antenna("left_bouncy_antenna", -1, leg_mat, shell_highlight))
+    parts.extend(add_antenna("right_bouncy_antenna", 1, leg_mat, shell_highlight))
 
     bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
     root = bpy.context.object

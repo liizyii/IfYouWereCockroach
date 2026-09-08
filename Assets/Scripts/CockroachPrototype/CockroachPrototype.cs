@@ -136,6 +136,26 @@ namespace IfYouWereCockroach.Prototype
                 "Esc   解锁鼠标 Unlock cursor   Q 退出 Quit";
         }
 
+        public static string SideMissionText(DemoObjectiveStep step, int foodProgress, int foodGoal, bool isHidden, int eggProgress, int eggGoal, bool escapeComplete, int availableEggs)
+        {
+            string eggTask = eggGoal <= 0
+                ? "[完成 Done] 无强制产卵 / Egg optional"
+                : $"{(eggProgress >= eggGoal ? "[完成 Done]" : "[ ]")} 产卵 Lay egg: {eggProgress}/{eggGoal}";
+            string escapeTask = escapeComplete
+                ? "[完成 Done] 逃脱一次 / Escape once"
+                : "[ ] 逃脱一次 / Escape once";
+
+            return
+                $"当前任务 Current\n{ObjectiveText(step, foodProgress, foodGoal, Mathf.Max(0, availableEggs))}\n\n" +
+                "任务清单 Mission\n" +
+                $"{(foodProgress >= foodGoal ? "[完成 Done]" : "[ ]")} 吃食物 Eat food: {foodProgress}/{foodGoal}\n" +
+                $"{(isHidden ? "[完成 Done]" : "[ ]")} 藏进阴影 Hide in cover\n" +
+                eggTask + "\n" +
+                escapeTask + "\n" +
+                $"机会 Egg chances: {Mathf.Max(0, availableEggs)}\n" +
+                "绿色圈 Green ring = 可产卵 Egg spot";
+        }
+
         public static string AreaLabel(string areaName)
         {
             switch (areaName)
@@ -843,22 +863,21 @@ namespace IfYouWereCockroach.Prototype
             canvasObject.AddComponent<GraphicRaycaster>();
             hudFont = LoadHudFont();
 
-            var statusPanel = CreatePanel(canvasObject.transform, "Status Panel", new Vector2(18f, -18f), TextAnchor.UpperLeft, new Vector2(430f, 162f), new Color(0.045f, 0.05f, 0.046f, 0.76f));
-            var tasksPanel = CreatePanel(canvasObject.transform, "Tasks Panel", new Vector2(18f, -190f), TextAnchor.UpperLeft, new Vector2(500f, 294f), new Color(0.055f, 0.045f, 0.035f, 0.72f));
-            var routePanel = CreatePanel(canvasObject.transform, "Guide Panel", new Vector2(-18f, -18f), TextAnchor.UpperRight, new Vector2(500f, 312f), new Color(0.035f, 0.046f, 0.055f, 0.72f));
-            var objectivePanel = CreatePanel(canvasObject.transform, "Objective Banner", new Vector2(0f, -18f), TextAnchor.UpperCenter, new Vector2(520f, 92f), new Color(0.08f, 0.065f, 0.035f, 0.78f));
+            var statusPanel = CreatePanel(canvasObject.transform, "Status Panel", new Vector2(18f, -18f), TextAnchor.UpperLeft, new Vector2(430f, 152f), new Color(0.045f, 0.05f, 0.046f, 0.66f));
+            var tasksPanel = CreatePanel(canvasObject.transform, "Tasks Panel", new Vector2(18f, -180f), TextAnchor.UpperLeft, new Vector2(500f, 354f), new Color(0.055f, 0.045f, 0.035f, 0.66f));
+            var routePanel = CreatePanel(canvasObject.transform, "Guide Panel", new Vector2(-18f, -18f), TextAnchor.UpperRight, new Vector2(500f, 312f), new Color(0.035f, 0.046f, 0.055f, 0.66f));
 
-            statusText = CreateText(statusPanel.transform, "Status", new Vector2(16f, -14f), TextAnchor.UpperLeft, 21, new Vector2(398f, 134f));
-            tasksText = CreateText(tasksPanel.transform, "Tasks", new Vector2(16f, -14f), TextAnchor.UpperLeft, 20, new Vector2(468f, 262f));
-            routeText = CreateText(routePanel.transform, "Guide", new Vector2(-16f, -14f), TextAnchor.UpperRight, 19, new Vector2(468f, 280f));
-            objectiveText = CreateText(objectivePanel.transform, "Objective", Vector2.zero, TextAnchor.MiddleCenter, 24, new Vector2(488f, 72f));
-            eventText = CreateText(canvasObject.transform, "Event", new Vector2(0f, 54f), TextAnchor.LowerCenter, 24, new Vector2(980f, 76f));
+            statusText = CreateText(statusPanel.transform, "Status", new Vector2(16f, -12f), TextAnchor.UpperLeft, 19, new Vector2(398f, 126f));
+            tasksText = CreateText(tasksPanel.transform, "Tasks", new Vector2(16f, -14f), TextAnchor.UpperLeft, 19, new Vector2(468f, 322f));
+            routeText = CreateText(routePanel.transform, "Guide", new Vector2(-16f, -14f), TextAnchor.UpperRight, 18, new Vector2(468f, 280f));
+            objectiveText = null;
+            eventText = CreateText(canvasObject.transform, "Event", new Vector2(0f, 54f), TextAnchor.LowerCenter, 21, new Vector2(980f, 64f));
             leaderboardText = null;
 
             challengePanel = CreatePanel(canvasObject.transform, "Challenge Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(760f, 360f), new Color(0f, 0f, 0f, 0.82f)).gameObject;
             challengeText = CreateText(challengePanel.transform, "Challenge Text", new Vector2(0f, 0f), TextAnchor.MiddleCenter, 24, new Vector2(700f, 310f));
-            resultPanel = CreatePanel(canvasObject.transform, "Run Result Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(760f, 420f), new Color(0f, 0f, 0f, 0.84f)).gameObject;
-            resultText = CreateText(resultPanel.transform, "Run Result Text", Vector2.zero, TextAnchor.MiddleCenter, 24, new Vector2(700f, 360f));
+            resultPanel = CreatePanel(canvasObject.transform, "Run Result Panel", new Vector2(-18f, -344f), TextAnchor.UpperRight, new Vector2(500f, 264f), new Color(0f, 0f, 0f, 0.74f)).gameObject;
+            resultText = CreateText(resultPanel.transform, "Run Result Text", new Vector2(-16f, -14f), TextAnchor.UpperRight, 20, new Vector2(468f, 232f));
             introPanel = CreatePanel(canvasObject.transform, "Intro Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(860f, 430f), new Color(0.025f, 0.03f, 0.028f, 0.88f)).gameObject;
             introText = CreateText(introPanel.transform, "Intro Text", Vector2.zero, TextAnchor.MiddleCenter, 22, new Vector2(800f, 368f));
             challengePanel.SetActive(false);
@@ -2072,21 +2091,20 @@ namespace IfYouWereCockroach.Prototype
                 int stageFoodProgress = Mathf.Clamp(eaten - stageStartEaten, 0, stageFoodGoal);
                 int stageEggGoal = Mathf.Max(0, targetEggCount - stageStartEggs);
                 int stageEggProgress = Mathf.Clamp(eggsLaid - stageStartEggs, 0, Mathf.Max(1, stageEggGoal));
-                string eggTask = targetEggCount <= 0
-                    ? TaskLine(true, "无强制产卵 / Egg optional")
-                    : TaskLine(eggsLaid >= targetEggCount, $"产卵 Lay egg: {stageEggProgress}/{stageEggGoal}");
-                string escapeTask = RequiresEscapeThisStage()
-                    ? TaskLine(escapedAfterDetection, "逃脱一次 / Escape once")
-                    : TaskLine(true, "无需逃脱 / Escape optional");
+                bool hidden = player != null && player.IsHidden;
+                var step = DemoObjectivePlanner.SelectStep(eaten, targetFoodCount, hidden, eggsLaid, targetEggCount, hasBeenDetected, escapedAfterDetection, RequiresEscapeThisStage(), alive);
 
                 tasksText.text =
-                    $"任务清单 Mission  第 {challengeLevel + 1} 关\n" +
-                    TaskLine(eaten >= targetFoodCount, $"吃食物 Eat food: {stageFoodProgress}/{stageFoodGoal}") +
-                    TaskLine(player != null && player.IsHidden, "藏进阴影 Hide in cover") +
-                    eggTask +
-                    escapeTask +
-                    $"机会 Egg chances: {Mathf.Max(0, availableEggs)}\n" +
-                    "绿色圈 Green ring = 可产卵 Egg spot";
+                    $"第 {challengeLevel + 1} 关 / Stage {challengeLevel + 1}\n" +
+                    DemoObjectivePlanner.SideMissionText(
+                        step,
+                        stageFoodProgress,
+                        stageFoodGoal,
+                        hidden,
+                        stageEggProgress,
+                        stageEggGoal,
+                        !RequiresEscapeThisStage() || escapedAfterDetection,
+                        availableEggs);
             }
 
             if (leaderboardText != null)
@@ -2151,7 +2169,7 @@ namespace IfYouWereCockroach.Prototype
                 $"吃到食物 Food: {eaten}\n" +
                 $"产卵次数 Eggs: {eggsLaid}\n" +
                 $"通关阶段 Stages: {challengeLevel}\n\n" +
-                "按 R 重新开始 / Press R to restart";
+                "R 重开 / Restart";
         }
         private void UpdateIntroPanel()
         {
