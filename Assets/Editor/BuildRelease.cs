@@ -10,7 +10,8 @@ namespace IfYouWereCockroach.EditorTools
     public static class BuildRelease
     {
         private const string ScenePath = "Assets/Scenes/SampleScene.unity";
-        private const string DefaultOutputPath = "Builds/Windows/IfYouWereCockroach.exe";
+        private const string DefaultWindowsOutputPath = "Builds/Windows/IfYouWereCockroach.exe";
+        private const string DefaultWebGlOutputPath = "Builds/WebGL";
 
         [MenuItem("If You Were Cockroach/Build Windows Release")]
         public static void BuildWindowsReleaseMenu()
@@ -18,16 +19,45 @@ namespace IfYouWereCockroach.EditorTools
             BuildWindowsReleaseFromCommandLine();
         }
 
+        [MenuItem("If You Were Cockroach/Build WebGL Release")]
+        public static void BuildWebGLReleaseMenu()
+        {
+            BuildWebGLReleaseFromCommandLine();
+        }
+
         public static void BuildWindowsReleaseFromCommandLine()
         {
-            string outputPath = GetCommandLineValue("-outputPath") ?? DefaultOutputPath;
-            outputPath = outputPath.Replace('\\', '/');
+            string outputPath = (GetCommandLineValue("-outputPath") ?? DefaultWindowsOutputPath).Replace('\\', '/');
             string directory = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(directory))
             {
                 Directory.CreateDirectory(directory);
             }
 
+            ApplyCommonPlayerSettings();
+            EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Standalone, BuildTarget.StandaloneWindows64);
+
+            BuildPlayerOptions options = CreateBuildOptions(outputPath, BuildTarget.StandaloneWindows64);
+            RunBuild(options, "Windows release build");
+        }
+
+        public static void BuildWebGLReleaseFromCommandLine()
+        {
+            string outputPath = (GetCommandLineValue("-outputPath") ?? DefaultWebGlOutputPath).Replace('\\', '/');
+            Directory.CreateDirectory(outputPath);
+
+            ApplyCommonPlayerSettings();
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
+            PlayerSettings.WebGL.decompressionFallback = true;
+            PlayerSettings.WebGL.dataCaching = true;
+            EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.WebGL, BuildTarget.WebGL);
+
+            BuildPlayerOptions options = CreateBuildOptions(outputPath, BuildTarget.WebGL);
+            RunBuild(options, "WebGL release build");
+        }
+
+        private static void ApplyCommonPlayerSettings()
+        {
             PlayerSettings.companyName = "liizyii";
             PlayerSettings.productName = "If You Were Cockroach";
             PlayerSettings.bundleVersion = "0.2.0";
@@ -41,24 +71,28 @@ namespace IfYouWereCockroach.EditorTools
             {
                 new EditorBuildSettingsScene(ScenePath, true)
             };
+        }
 
-            EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Standalone, BuildTarget.StandaloneWindows64);
-
-            var options = new BuildPlayerOptions
+        private static BuildPlayerOptions CreateBuildOptions(string outputPath, BuildTarget target)
+        {
+            return new BuildPlayerOptions
             {
                 scenes = new[] { ScenePath },
                 locationPathName = outputPath,
-                target = BuildTarget.StandaloneWindows64,
+                target = target,
                 options = BuildOptions.None
             };
+        }
 
+        private static void RunBuild(BuildPlayerOptions options, string label)
+        {
             BuildReport report = BuildPipeline.BuildPlayer(options);
             BuildSummary summary = report.summary;
-            Debug.Log($"Release build result: {summary.result}; size: {summary.totalSize} bytes; output: {outputPath}");
+            Debug.Log($"{label} result: {summary.result}; size: {summary.totalSize} bytes; output: {options.locationPathName}");
 
             if (summary.result != BuildResult.Succeeded)
             {
-                throw new InvalidOperationException($"Windows release build failed with result {summary.result}");
+                throw new InvalidOperationException($"{label} failed with result {summary.result}");
             }
         }
 

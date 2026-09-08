@@ -14,7 +14,15 @@ Zip the `Builds/Windows` folder as `Releases/IfYouWereCockroach-试玩版-Window
 
 ## Web Version
 
-A browser-playable WebGL version is the best public link for casual players. The current local Unity installation only has Windows Standalone support installed. Install **WebGL Build Support** for Unity `2022.3.62f3c1` in Unity Hub before making the web build.
+Build with:
+
+```powershell
+& "D:\Unity\Editors\Editor\Unity.exe" -batchmode -quit -buildTarget WebGL -projectPath "D:\Unity\IfYouWereCockroach" -executeMethod IfYouWereCockroach.EditorTools.BuildRelease.BuildWebGLReleaseFromCommandLine -outputPath "Builds\WebGL试玩版"
+```
+
+Publish the contents of `Builds/WebGL试玩版` to the repository's `gh-pages` branch. Players can open the browser version at:
+
+https://liizyii.github.io/IfYouWereCockroach/
 
 ## Controls
 
