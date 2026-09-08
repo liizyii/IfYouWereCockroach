@@ -10,7 +10,7 @@ Build with:
 & "D:\Unity\Editors\Editor\Unity.exe" -batchmode -quit -projectPath "D:\Unity\IfYouWereCockroach" -executeMethod IfYouWereCockroach.EditorTools.BuildRelease.BuildWindowsReleaseFromCommandLine -outputPath "Builds\Windows\IfYouWereCockroach.exe"
 ```
 
-Zip the `Builds/Windows` folder after building. Players only need to extract the zip and double-click `IfYouWereCockroach.exe`.
+Zip the `Builds/Windows` folder as `Releases/IfYouWereCockroach-试玩版-Windows.zip`. Players only need to extract the zip and double-click `IfYouWereCockroach.exe`.
 
 ## Web Version
 
