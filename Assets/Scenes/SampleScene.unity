@@ -277,7 +277,6 @@ GameObject:
   - component: {fileID: 200000004}
   - component: {fileID: 200000005}
   - component: {fileID: 200000006}
-  - component: {fileID: 200000007}
   m_Layer: 0
   m_Name: Playable Demo Launcher - Press Play
   m_TagString: Untagged
@@ -366,16 +365,5 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 79ba64d870c0fdf4f93cd0b80ec95bd1, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
---- !u!114 &200000007
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 200000001}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 59b1364f8bfbeff45a7a09a0a5703b55, type: 3}
   m_Name:
   m_EditorClassIdentifier:

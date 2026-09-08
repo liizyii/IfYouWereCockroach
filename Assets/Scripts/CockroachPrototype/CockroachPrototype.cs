@@ -153,12 +153,15 @@ namespace IfYouWereCockroach.Prototype
         private Text objectiveText;
         private Text routeText;
         private Text resultText;
+        private Text introText;
         private Text challengeText;
         private GameObject challengePanel;
         private GameObject resultPanel;
+        private GameObject introPanel;
         private GameObject eggHintObject;
         private float survivalTime;
         private float eventMessageTimer;
+        private float introOverlayTimer;
         private float spawnGraceTimer;
         private float dynamicFoodTimer;
         private float suspicion;
@@ -203,6 +206,11 @@ namespace IfYouWereCockroach.Prototype
             if (Input.GetKeyDown(KeyCode.R))
             {
                 BeginNewRun();
+            }
+
+            if (Input.GetKeyDown(KeyCode.Q))
+            {
+                Application.Quit();
             }
 
             if (challengePromptActive)
@@ -252,6 +260,7 @@ namespace IfYouWereCockroach.Prototype
             seed = random.Next(10000, 99999);
             UnityEngine.Random.InitState(seed);
             survivalTime = 0f;
+            introOverlayTimer = 8f;
             spawnGraceTimer = 7f;
             suspicion = 0f;
             eggsLaid = 0;
@@ -461,6 +470,7 @@ namespace IfYouWereCockroach.Prototype
             AddFurniture("马桶", new Vector3(-4.8f, 0.34f, -5.65f), new Vector3(0.9f, 0.68f, 0.9f), new Color(0.9f, 0.9f, 0.86f), false, "Models/Environment/Toilet_LowPoly");
 
             BuildRouteLandmarks();
+            BuildPolishProps();
 
             int decorationCount = random.Next(5, 10);
             for (int i = 0; i < decorationCount; i++)
@@ -487,12 +497,52 @@ namespace IfYouWereCockroach.Prototype
             light.transform.rotation = Quaternion.Euler(54f, -34f, 0f);
             QualitySettings.shadows = ShadowQuality.All;
             QualitySettings.shadowDistance = 24f;
-            RenderSettings.ambientIntensity = 0.72f;
+            RenderSettings.ambientIntensity = 0.64f;
+            RenderSettings.fog = true;
+            RenderSettings.fogColor = new Color(0.34f, 0.33f, 0.29f);
+            RenderSettings.fogDensity = 0.014f;
 
             BuildAmbientAudio();
         }
 
 
+        private void BuildAtmosphere()
+        {
+            CreateWorldVisual("Warm Light Pool", PrimitiveType.Cylinder, new Vector3(-5.2f, 0.031f, 4.75f), new Vector3(1.8f, 0.01f, 1.1f), new Color(0.95f, 0.72f, 0.34f, 0.55f));
+            CreateWorldVisual("Cold Window Light", PrimitiveType.Cylinder, new Vector3(4.2f, 0.032f, 3.6f), new Vector3(2.6f, 0.01f, 1.4f), new Color(0.34f, 0.55f, 0.72f, 0.42f));
+            CreateWorldVisual("Bedroom Dust Glow", PrimitiveType.Cylinder, new Vector3(4.8f, 0.033f, -4.7f), new Vector3(2.1f, 0.01f, 1.55f), new Color(0.58f, 0.46f, 0.32f, 0.42f));
+
+            for (int i = 0; i < 18; i++)
+            {
+                var position = new Vector3(UnityEngine.Random.Range(-8.1f, 8.1f), UnityEngine.Random.Range(0.45f, 1.95f), UnityEngine.Random.Range(-6.2f, 6.2f));
+                CreateWorldVisual("Dust Mote", PrimitiveType.Sphere, position, Vector3.one * UnityEngine.Random.Range(0.018f, 0.04f), new Color(0.85f, 0.78f, 0.58f, 0.5f));
+            }
+        }
+
+        private void BuildPolishProps()
+        {
+            AddReadableTrailCluster(new Vector3(-6.3f, 0.05f, 4.8f), 9, new Color(0.95f, 0.72f, 0.18f));
+            AddReadableTrailCluster(new Vector3(-3.0f, 0.05f, 2.25f), 8, new Color(0.9f, 0.56f, 0.18f));
+            AddReadableTrailCluster(new Vector3(4.7f, 0.05f, -4.35f), 7, new Color(0.82f, 0.68f, 0.34f));
+
+            CreateWorldVisual("Kitchen Sauce Smear", PrimitiveType.Cylinder, new Vector3(-3.65f, 0.052f, 2.05f), new Vector3(0.52f, 0.014f, 0.32f), new Color(0.55f, 0.08f, 0.035f, 0.8f), Quaternion.Euler(0f, 34f, 0f));
+            CreateWorldVisual("Torn Paper Corner", PrimitiveType.Cube, new Vector3(1.7f, 0.07f, 4.55f), new Vector3(0.44f, 0.012f, 0.28f), new Color(0.82f, 0.78f, 0.62f), Quaternion.Euler(4f, 24f, 2f));
+            CreateWorldVisual("Sock Lump", PrimitiveType.Sphere, new Vector3(6.35f, 0.12f, -2.6f), new Vector3(0.5f, 0.16f, 0.24f), new Color(0.18f, 0.24f, 0.35f));
+            CreateWorldVisual("Power Outlet Plate", PrimitiveType.Cube, new Vector3(8.86f, 0.55f, 4.6f), new Vector3(0.035f, 0.32f, 0.24f), new Color(0.82f, 0.82f, 0.76f));
+            CreateWorldVisual("Outlet Left Slot", PrimitiveType.Cube, new Vector3(8.83f, 0.57f, 4.55f), new Vector3(0.02f, 0.075f, 0.018f), new Color(0.06f, 0.055f, 0.045f));
+            CreateWorldVisual("Outlet Right Slot", PrimitiveType.Cube, new Vector3(8.83f, 0.57f, 4.65f), new Vector3(0.02f, 0.075f, 0.018f), new Color(0.06f, 0.055f, 0.045f));
+        }
+
+        private void AddReadableTrailCluster(Vector3 center, int count, Color color)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                float angle = i * 137.5f * Mathf.Deg2Rad;
+                float radius = 0.08f + 0.035f * i;
+                var position = center + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius * 0.65f);
+                CreateWorldVisual("Readable Crumb", PrimitiveType.Sphere, position, Vector3.one * UnityEngine.Random.Range(0.055f, 0.12f), color * UnityEngine.Random.Range(0.82f, 1.15f));
+            }
+        }
         private void BuildRouteLandmarks()
         {
             AddScentTrail(new Vector3(-7.1f, 0.04f, 5.2f), new Vector3(-3.1f, 0.04f, 2.6f), 8);
@@ -765,15 +815,15 @@ namespace IfYouWereCockroach.Prototype
             scaler.matchWidthOrHeight = 0.5f;
             canvasObject.AddComponent<GraphicRaycaster>();
 
-            var statusPanel = CreatePanel(canvasObject.transform, "Status Panel", new Vector2(18f, -18f), TextAnchor.UpperLeft, new Vector2(590f, 178f), new Color(0f, 0f, 0f, 0.68f));
-            var tasksPanel = CreatePanel(canvasObject.transform, "Tasks Panel", new Vector2(18f, -214f), TextAnchor.UpperLeft, new Vector2(650f, 236f), new Color(0f, 0f, 0f, 0.64f));
-            var routePanel = CreatePanel(canvasObject.transform, "Route Panel", new Vector2(-18f, -18f), TextAnchor.UpperRight, new Vector2(430f, 270f), new Color(0f, 0f, 0f, 0.56f));
-            var objectivePanel = CreatePanel(canvasObject.transform, "Objective Banner", new Vector2(0f, -22f), TextAnchor.UpperCenter, new Vector2(760f, 86f), new Color(0.04f, 0.05f, 0.035f, 0.68f));
+            var statusPanel = CreatePanel(canvasObject.transform, "Status Panel", new Vector2(18f, -18f), TextAnchor.UpperLeft, new Vector2(590f, 178f), new Color(0.045f, 0.05f, 0.046f, 0.78f));
+            var tasksPanel = CreatePanel(canvasObject.transform, "Tasks Panel", new Vector2(18f, -214f), TextAnchor.UpperLeft, new Vector2(650f, 236f), new Color(0.055f, 0.045f, 0.035f, 0.72f));
+            var routePanel = CreatePanel(canvasObject.transform, "Route Panel", new Vector2(-18f, -18f), TextAnchor.UpperRight, new Vector2(460f, 292f), new Color(0.035f, 0.046f, 0.055f, 0.68f));
+            var objectivePanel = CreatePanel(canvasObject.transform, "Objective Banner", new Vector2(0f, -22f), TextAnchor.UpperCenter, new Vector2(820f, 88f), new Color(0.08f, 0.065f, 0.035f, 0.78f));
 
             statusText = CreateText(statusPanel.transform, "Status", new Vector2(18f, -16f), TextAnchor.UpperLeft, 28, new Vector2(554f, 146f));
             tasksText = CreateText(tasksPanel.transform, "Tasks", new Vector2(18f, -16f), TextAnchor.UpperLeft, 26, new Vector2(614f, 204f));
-            routeText = CreateText(routePanel.transform, "Route", new Vector2(-18f, -16f), TextAnchor.UpperRight, 22, new Vector2(394f, 238f));
-            objectiveText = CreateText(objectivePanel.transform, "Objective", Vector2.zero, TextAnchor.MiddleCenter, 30, new Vector2(710f, 62f));
+            routeText = CreateText(routePanel.transform, "Route", new Vector2(-18f, -16f), TextAnchor.UpperRight, 22, new Vector2(424f, 260f));
+            objectiveText = CreateText(objectivePanel.transform, "Objective", Vector2.zero, TextAnchor.MiddleCenter, 31, new Vector2(772f, 62f));
             eventText = CreateText(canvasObject.transform, "Event", new Vector2(0f, 56f), TextAnchor.LowerCenter, 30, new Vector2(1100f, 90f));
             leaderboardText = null;
 
@@ -781,8 +831,11 @@ namespace IfYouWereCockroach.Prototype
             challengeText = CreateText(challengePanel.transform, "Challenge Text", new Vector2(0f, 0f), TextAnchor.MiddleCenter, 28, new Vector2(700f, 310f));
             resultPanel = CreatePanel(canvasObject.transform, "Run Result Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(760f, 420f), new Color(0f, 0f, 0f, 0.84f)).gameObject;
             resultText = CreateText(resultPanel.transform, "Run Result Text", Vector2.zero, TextAnchor.MiddleCenter, 28, new Vector2(700f, 360f));
+            introPanel = CreatePanel(canvasObject.transform, "Intro Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(820f, 390f), new Color(0.025f, 0.03f, 0.028f, 0.88f)).gameObject;
+            introText = CreateText(introPanel.transform, "Intro Text", Vector2.zero, TextAnchor.MiddleCenter, 29, new Vector2(760f, 330f));
             challengePanel.SetActive(false);
             resultPanel.SetActive(false);
+            introPanel.SetActive(true);
         }
         private Image CreatePanel(Transform parent, string name, Vector2 anchoredPosition, TextAnchor anchor, Vector2 size, Color color)
         {
@@ -1961,6 +2014,7 @@ namespace IfYouWereCockroach.Prototype
             int availableEggs = foodItems.Count(food => food.Eaten) / 5 - eggsLaid;
             UpdateObjectiveAndRouteUi(eaten, availableEggs);
             UpdateResultPanel(eaten);
+            UpdateIntroPanel();
             if (statusText != null)
             {
                 string state = alive ? "存活中" : "已死亡";
@@ -2066,6 +2120,36 @@ namespace IfYouWereCockroach.Prototype
                 $"通关阶段：{challengeLevel}\n\n" +
                 "按 R 重新开始";
         }
+        private void UpdateIntroPanel()
+        {
+            if (introPanel == null || introText == null)
+            {
+                return;
+            }
+
+            if (!alive || challengePromptActive)
+            {
+                introPanel.SetActive(false);
+                return;
+            }
+
+            introOverlayTimer = Mathf.Max(0f, introOverlayTimer - Time.deltaTime);
+            bool show = introOverlayTimer > 0f;
+            introPanel.SetActive(show);
+            if (!show)
+            {
+                return;
+            }
+
+            introText.text =
+                "\u5982\u679c\u4f60\u662f\u4e00\u53ea\u87d1\u8782\n\n" +
+                "\u53d1\u5e03\u7248\u4e0d\u7528\u5b89\u88c5 Unity\uff1a\u89e3\u538b\u540e\u53cc\u51fb EXE \u5c31\u80fd\u73a9\n\n" +
+                "\u6cbf\u7740\u98df\u7269\u75d5\u8ff9\u524d\u8fdb\uff0c\u5403\u591f\u98df\u7269\uff0c\u94bb\u8fdb\u5bb6\u5177\u9634\u5f71\uff0c\u4ea7\u5375\uff0c\u7136\u540e\u7529\u5f00\u4e00\u6b21\u8ffd\u6355\u3002\n\n" +
+                "WASD \u79fb\u52a8  \u9f20\u6807\u8f6c\u5411  Shift \u75be\u8dd1\n" +
+                "Space \u8df3\u8dc3  E \u4ea7\u5375  R \u91cd\u5f00  Q \u9000\u51fa\n\n" +
+                "\u70b9\u51fb\u6e38\u620f\u7a97\u53e3\u9501\u5b9a\u9f20\u6807\uff1bEsc \u91ca\u653e\u9f20\u6807";
+        }
+
         private static string TaskLine(bool complete, string text)
         {
             return $"{(complete ? "[完成]" : "[ ]")} {text}\n";
