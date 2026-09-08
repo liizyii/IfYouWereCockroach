@@ -871,15 +871,15 @@ namespace IfYouWereCockroach.Prototype
             tasksText = CreateText(tasksPanel.transform, "Tasks", new Vector2(16f, -14f), TextAnchor.UpperLeft, 19, new Vector2(468f, 322f));
             routeText = CreateText(routePanel.transform, "Guide", new Vector2(-16f, -14f), TextAnchor.UpperRight, 18, new Vector2(468f, 280f));
             objectiveText = null;
-            eventText = CreateText(canvasObject.transform, "Event", new Vector2(0f, 54f), TextAnchor.LowerCenter, 21, new Vector2(980f, 64f));
+            eventText = CreateText(canvasObject.transform, "Event", new Vector2(18f, -544f), TextAnchor.UpperLeft, 19, new Vector2(500f, 64f));
             leaderboardText = null;
 
-            challengePanel = CreatePanel(canvasObject.transform, "Challenge Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(760f, 360f), new Color(0f, 0f, 0f, 0.82f)).gameObject;
-            challengeText = CreateText(challengePanel.transform, "Challenge Text", new Vector2(0f, 0f), TextAnchor.MiddleCenter, 24, new Vector2(700f, 310f));
+            challengePanel = CreatePanel(canvasObject.transform, "Challenge Panel", new Vector2(-18f, -344f), TextAnchor.UpperRight, new Vector2(500f, 264f), new Color(0f, 0f, 0f, 0.74f)).gameObject;
+            challengeText = CreateText(challengePanel.transform, "Challenge Text", new Vector2(-16f, -14f), TextAnchor.UpperRight, 20, new Vector2(468f, 232f));
             resultPanel = CreatePanel(canvasObject.transform, "Run Result Panel", new Vector2(-18f, -344f), TextAnchor.UpperRight, new Vector2(500f, 264f), new Color(0f, 0f, 0f, 0.74f)).gameObject;
             resultText = CreateText(resultPanel.transform, "Run Result Text", new Vector2(-16f, -14f), TextAnchor.UpperRight, 20, new Vector2(468f, 232f));
-            introPanel = CreatePanel(canvasObject.transform, "Intro Panel", Vector2.zero, TextAnchor.MiddleCenter, new Vector2(860f, 430f), new Color(0.025f, 0.03f, 0.028f, 0.88f)).gameObject;
-            introText = CreateText(introPanel.transform, "Intro Text", Vector2.zero, TextAnchor.MiddleCenter, 22, new Vector2(800f, 368f));
+            introPanel = CreatePanel(canvasObject.transform, "Intro Panel", new Vector2(-18f, -344f), TextAnchor.UpperRight, new Vector2(500f, 330f), new Color(0.025f, 0.03f, 0.028f, 0.78f)).gameObject;
+            introText = CreateText(introPanel.transform, "Intro Text", new Vector2(-16f, -14f), TextAnchor.UpperRight, 18, new Vector2(468f, 298f));
             challengePanel.SetActive(false);
             resultPanel.SetActive(false);
             introPanel.SetActive(true);

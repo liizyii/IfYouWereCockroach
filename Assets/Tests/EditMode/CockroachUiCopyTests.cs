@@ -1,6 +1,7 @@
 using System.Reflection;
 using IfYouWereCockroach.Prototype;
 using NUnit.Framework;
+using UnityEngine;
 
 public sealed class CockroachUiCopyTests
 {
@@ -52,5 +53,46 @@ public sealed class CockroachUiCopyTests
         StringAssert.Contains("Current", copy);
         StringAssert.Contains("产卵", copy);
         StringAssert.Contains("Lay egg", copy);
+    }
+
+    [Test]
+    public void BuildUiPlacesEveryHudElementOnASide()
+    {
+        var managerObject = new GameObject("HUD layout test manager");
+        var manager = managerObject.AddComponent<CockroachGameManager>();
+        var buildUi = typeof(CockroachGameManager).GetMethod("BuildUi", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(buildUi);
+        buildUi.Invoke(manager, null);
+
+        var canvasObject = GameObject.Find("Prototype HUD");
+        Assert.NotNull(canvasObject);
+
+        foreach (string elementName in new[] { "Event", "Challenge Panel", "Intro Panel", "Run Result Panel" })
+        {
+            var element = FindChild(canvasObject.transform, elementName);
+            Assert.NotNull(element, $"Missing HUD element: {elementName}");
+
+            var rect = element.GetComponent<RectTransform>();
+            Assert.NotNull(rect);
+            Assert.AreNotEqual(new Vector2(0.5f, 0.5f), rect.anchorMin, $"{elementName} must not use the center of the screen");
+            Assert.AreNotEqual(new Vector2(0.5f, 0f), rect.anchorMin, $"{elementName} must not use the bottom center of the screen");
+        }
+
+        Object.DestroyImmediate(canvasObject);
+        Object.DestroyImmediate(managerObject);
+    }
+
+    private static Transform FindChild(Transform parent, string name)
+    {
+        foreach (Transform child in parent)
+        {
+            if (child.name == name)
+            {
+                return child;
+            }
+        }
+
+        return null;
     }
 }
